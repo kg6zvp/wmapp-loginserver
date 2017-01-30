@@ -10,7 +10,8 @@ Token|Invalidate Token
 
 Token, URL|Subscribe to Invalidation Notices
 Token|Raw LDAP Info (low priority)
-
+/key
+	/getPubKey
 /user
 	/getUserInfo
 	/getUserInfoLdap //low priority
