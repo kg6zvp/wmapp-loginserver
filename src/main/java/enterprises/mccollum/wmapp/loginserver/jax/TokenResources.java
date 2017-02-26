@@ -3,6 +3,8 @@
  */
 package enterprises.mccollum.wmapp.loginserver.jax;
 
+import java.util.Base64;
+
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.json.JsonObject;
@@ -57,12 +59,9 @@ public class TokenResources {
 		String deviceName = obj.getString("devicename");
 		System.out.println("username: "+username);
 		DomainUser u = null;
-		try {
-			u = ldapManager.login(username, password);
-		} catch (LDAPException e) {
-			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getResultString()).build(); //return useful error to client for debugging porpoises
-		}
+		u = ldapManager.login(username, password);
+		if(u == null)
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("").build(); //return useful error to client for debugging porpoises
 		if(u == null)
 			return Response.status(Status.FORBIDDEN).build();
 		UserToken token = new UserToken();
@@ -112,5 +111,26 @@ public class TokenResources {
 	@Path("subscribeToInvalidation")
 	public Response subscribeToInvalidation(){
 		return Response.ok().build();
+	}
+	
+	private Object fixRecursion(Object o){
+		if(o instanceof UserToken){
+			UserToken u = (UserToken)o;
+			for(UserGroup g : u.getGroups())
+				g.setUsers(null);
+			return u;
+		}else if(o instanceof UserGroup){
+			UserGroup g = (UserGroup)o;
+			for(DomainUser u : g.getUsers()){ //list users, but don't list groups and users for every user
+				u.setGroups(null);
+			}
+			return g;
+		}
+		return null;
+	}
+	
+	private String signToken(UserToken token){
+		Base64.Encoder encoder = Base64.getEncoder();
+		return "";
 	}
 }
