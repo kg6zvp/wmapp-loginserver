@@ -56,9 +56,9 @@ public class LdapCapture {
 	
 	@PostConstruct
 	public void init(){
-		Debug.setEnabled(true);
-		Debug.getLogger().setLevel(Level.FINEST);
-		Debug.setIncludeStackTrace(true);
+		Debug.setEnabled(false);
+		//Debug.getLogger().setLevel(Level.FINEST);
+		//Debug.setIncludeStackTrace(true);
 		connection = new LDAPConnection();
 		try{
 			connection.connect(server, port); 
@@ -109,7 +109,13 @@ public class LdapCapture {
 	//TODO: re-write so that database key is not assumed to come from AD DC
 	private DomainUser userFromEntry(LDAPConnection conn, SearchResultEntry userEntry, String username, String password) throws LDAPSearchException, LDAPException{
 		//check if all groups listed by user exist and if not, create them, then add user to them
-		DomainUser u = dUsers.persist(readUserFromEntry(conn, userEntry));
+		DomainUser u = readUserFromEntry(conn, userEntry);
+		DomainUser tempUser = dUsers.get(u.getStudentId());
+		if(tempUser == null){ //if user isn't in the database...
+			u = dUsers.persist(u); //save/add them to it
+		}else{
+			u = dUsers.save(tempUser);
+		}
 		for(String groupName : userEntry.getAttributeValues("memberOf")){
 			String gCN = getCNFromMemberOf(groupName);
 			//conn.bind(String.format("cn=%s,%s",username,userBaseDN), password);

@@ -37,8 +37,13 @@ public class CryptoSingleton {
 	private static final char[] KEY_PASS = "password".toCharArray();
 	
 	@PostConstruct
-	public void init() throws Exception{
-		serviceKey = loadKeyPair();
+	public void init(){
+		try {
+			serviceKey = loadKeyPair();
+		} catch (Exception e) {
+			System.out.print("Honestly, I'm just sick of this at this point. I've been coding for hours trying to eliminate errors and this is what happens. I don't know what went wrong. Try checking line 44 of the file CryptoSingleton.java to see what's up here.\n");
+			e.printStackTrace();
+		}
 	}
 	
 	@Lock(LockType.READ)

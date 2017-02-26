@@ -55,15 +55,15 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 			JsonObjectBuilder job = getTokenObject(arg0);
 			String objString = getJsonString(job);
 			System.out.println("before: "+objString);
-			byte[] unsigned = objString.getBytes();
+			byte[] unsigned = objString.getBytes("UTF-8");
 			Signature signer = Signature.getInstance("SHA256withRSA");
 			signer.initSign(cs.getPrivateKey()); //should be the private key here, maybe retrieve from singleton?
 			signer.update(unsigned); //prepare for signature
 			byte[] signature = signer.sign();
 			JsonObjectBuilder containerBuilder = Json.createObjectBuilder();
 			containerBuilder.add("signature", Base64.getEncoder().encodeToString(signature));
-			containerBuilder.add("token", job);
-			arg6.write(containerBuilder.toString().getBytes());
+			containerBuilder.add("token", getTokenObject(arg0));
+			arg6.write(containerBuilder.build().toString().getBytes());
 			return;
 		/*} catch (JAXBException e) { 
 			e.printStackTrace();
@@ -123,6 +123,6 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 	}
 	
 	private String getJsonString(JsonObjectBuilder job){
-		return job.toString();
+		return job.build().toString();
 	}
 }
