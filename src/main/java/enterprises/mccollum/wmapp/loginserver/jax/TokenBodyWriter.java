@@ -88,6 +88,7 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 		job.add("deviceName", token.getDeviceName());
 		job.add("expirationDate", token.getExpirationDate());
 		job.add("blacklisted", token.getBlacklisted());
+		job.add("employeeType", token.getEmployeeType());
 		JsonArrayBuilder jab = Json.createArrayBuilder();
 		for(UserGroup g : token.getGroups()){
 			jab.add(getGroupObject(g));

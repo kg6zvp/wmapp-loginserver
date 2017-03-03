@@ -18,6 +18,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.unboundid.ldap.sdk.LDAPBindException;
 import com.unboundid.ldap.sdk.LDAPException;
 
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
@@ -59,11 +60,16 @@ public class TokenResources {
 		String deviceName = obj.getString("devicename");
 		System.out.println("username: "+username);
 		DomainUser u = null;
-		u = ldapManager.login(username, password);
-		if(u == null)
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("").build(); //return useful error to client for debugging porpoises
-		if(u == null)
-			return Response.status(Status.FORBIDDEN).build();
+		try {
+			u = ldapManager.login(username, password);
+		} catch (LDAPBindException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return Response.status(Status.FORBIDDEN).entity("Incorrect username or password").build();
+		} catch(LDAPException e){
+			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("LDAP error").build(); //return useful error to client for debugging porpoises
+		}
 		UserToken token = new UserToken();
 		token.setDeviceName(deviceName);
 		//remove expired tokens from database or something
@@ -72,6 +78,7 @@ public class TokenResources {
 		token.setGroups(u.getGroups());
 		token.setStudentID(u.getStudentId());
 		token.setUsername(u.getUsername());
+		token.setEmployeeType(u.getEmployeeType());
 		
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
 		//do magical encryption stuff here probably
@@ -127,10 +134,5 @@ public class TokenResources {
 			return g;
 		}
 		return null;
-	}
-	
-	private String signToken(UserToken token){
-		Base64.Encoder encoder = Base64.getEncoder();
-		return "";
 	}
 }

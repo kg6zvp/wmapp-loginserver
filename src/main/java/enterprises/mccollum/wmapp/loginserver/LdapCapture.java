@@ -1,15 +1,11 @@
 package enterprises.mccollum.wmapp.loginserver;
 
-import java.rmi.UnexpectedException;
 import java.util.List;
-import java.util.logging.Level;
-
 import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.inject.Inject;
 
-import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.LDAPBindException;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -81,6 +77,7 @@ public class LdapCapture {
 	 * @return
 	 * @throws LDAPSearchException
 	 */
+	@SuppressWarnings("unused")
 	private UserGroup groupFromEntry(SearchResultEntry entry) throws LDAPSearchException{
 		return uGroups.persist(readGroupFromEntry(entry));
 	}
@@ -107,7 +104,7 @@ public class LdapCapture {
 	}
 	
 	//TODO: re-write so that database key is not assumed to come from AD DC
-	private DomainUser userFromEntry(LDAPConnection conn, SearchResultEntry userEntry, String username, String password) throws LDAPSearchException, LDAPException{
+	private DomainUser userFromEntry(LDAPConnection conn, SearchResultEntry userEntry) throws LDAPSearchException, LDAPException, RuntimeException{
 		//check if all groups listed by user exist and if not, create them, then add user to them
 		DomainUser u = readUserFromEntry(conn, userEntry);
 		DomainUser tempUser = dUsers.get(u.getStudentId());
@@ -118,7 +115,6 @@ public class LdapCapture {
 		}
 		for(String groupName : userEntry.getAttributeValues("memberOf")){
 			String gCN = getCNFromMemberOf(groupName);
-			//conn.bind(String.format("cn=%s,%s",username,userBaseDN), password);
 			SearchResultEntry groupEntry = getGroupAttributes(conn, gCN);
 			UserGroup g = readGroupFromEntry(groupEntry);
 			UserGroup tempGroup = uGroups.findGroup(g.getName());
@@ -147,19 +143,20 @@ public class LdapCapture {
 	}
 
 	// Logs in and creates basic connection
-	public DomainUser login(String username, String password){
-		// TODO: allow multiple logins from the same user on different devices
+	public DomainUser login(String username, String password) throws LDAPException, LDAPBindException {
+		// TODO: allow multiple logins gracefully for the same user on different devices
+		LDAPConnection conn = new LDAPConnection();
+		conn.connect(server, port); 
+		System.out.printf("User: %s\nPassword: ****\n", username); //, password);
+		BindResult bound = null;
 		try{
-			LDAPConnection conn = new LDAPConnection();
-			conn.connect(server, port); 
-			System.out.printf("User: %s\nPassword: ****\n", username); //, password);
-			BindResult bound = conn.bind(String.format("cn=%s,%s",username,userBaseDN), password);
-			SearchResultEntry userEntry = getUserAttributes(conn, username);
-			return userFromEntry(conn, userEntry, username, password);
+			bound = conn.bind(String.format("cn=%s,%s",username,userBaseDN), password);
 		}catch(Exception e){
-			e.printStackTrace();
-			return null;
+			conn.close();
+			throw new LDAPBindException(bound);
 		}
+		SearchResultEntry userEntry = getUserAttributes(conn, username);
+		return userFromEntry(conn, userEntry);
 	}
 	
 	public SearchResultEntry getUserAttributes(LDAPConnection conn, String username) throws LDAPSearchException{
