@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.security.AlgorithmParameters;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
@@ -50,21 +51,21 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 	}
 
 	@Override
-	public void writeTo(UserToken arg0, Class<?> arg1, Type arg2, Annotation[] arg3, MediaType arg4, MultivaluedMap<String, Object> arg5, OutputStream arg6) throws IOException, WebApplicationException {
+	public void writeTo(UserToken t, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
 		try {
-			JsonObjectBuilder job = getTokenObject(arg0);
+			//sign token
+			JsonObjectBuilder job = getTokenObject(t);
 			String objString = getJsonString(job);
-			System.out.println("before: "+objString);
-			byte[] unsigned = objString.getBytes("UTF-8");
+			System.out.println("token: "+objString);
+			final byte[] unsigned = objString.getBytes("UTF-8");
 			Signature signer = Signature.getInstance("SHA256withRSA");
 			signer.initSign(cs.getPrivateKey()); //should be the private key here, maybe retrieve from singleton?
 			signer.update(unsigned); //prepare for signature
 			byte[] signature = signer.sign();
-			JsonObjectBuilder containerBuilder = Json.createObjectBuilder();
-			containerBuilder.add("signature", Base64.getEncoder().encodeToString(signature));
-			containerBuilder.add("token", getTokenObject(arg0));
-			arg6.write(containerBuilder.build().toString().getBytes());
-			return;
+			String signatureString = Base64.getEncoder().encodeToString(signature);
+			//add signature to the headers
+			httpHeaders.add(UserToken.SIGNATURE_HEADER, signatureString);
+			entityStream.write(objString.getBytes("UTF-8"));
 		/*} catch (JAXBException e) { 
 			e.printStackTrace();
 			System.out.println("Something went wrong with the conversion of the object to Json. Why?? I have no idea!:w");//*/
