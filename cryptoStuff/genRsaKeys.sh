@@ -1,6 +1,6 @@
 #!/bin/bash
 
-openssl genrsa -out privkey.pem 2048 #generate private key
+openssl genrsa -out privkey.pem 4096 #generate private key
 
 openssl rsa -in privkey.pem -pubout> pubkey.pub #dump public key
 
