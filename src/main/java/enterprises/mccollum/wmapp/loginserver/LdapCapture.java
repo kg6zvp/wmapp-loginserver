@@ -5,6 +5,7 @@ import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.inject.Inject;
+import javax.persistence.EntityManager;
 
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.LDAPBindException;
@@ -124,8 +125,8 @@ public class LdapCapture {
 				g = uGroups.persist(g);
 			}
 			g.addUser(u);
-			dUsers.save(u); //save user entry after adding group to user's groups list
 			uGroups.save(g); //save group entry after adding user to group
+			u = dUsers.save(u); //save user entry after adding group to user's groups list
 		}
 		return u; //add users to database and return the database-connected object instance
 	}

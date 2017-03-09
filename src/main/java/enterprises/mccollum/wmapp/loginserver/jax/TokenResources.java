@@ -3,21 +3,31 @@
  */
 package enterprises.mccollum.wmapp.loginserver.jax;
 
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.Base64;
+import java.util.Calendar;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.google.gson.Gson;
 import com.unboundid.ldap.sdk.LDAPBindException;
 import com.unboundid.ldap.sdk.LDAPException;
 
@@ -27,7 +37,9 @@ import enterprises.mccollum.wmapp.authobjects.UserGroup;
 import enterprises.mccollum.wmapp.authobjects.UserGroupBean;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
+import enterprises.mccollum.wmapp.loginserver.CryptoSingleton;
 import enterprises.mccollum.wmapp.loginserver.LdapCapture;
+import enterprises.mccollum.wmapp.loginserver.TokenUtils;
 
 /**
  * @author smccollum
@@ -49,6 +61,12 @@ public class TokenResources {
 	
 	@Inject
 	LdapCapture ldapManager;
+	
+	@Inject
+	TokenUtils tokenUtils;
+	
+	@Inject
+	CryptoSingleton cs;
 	
 	//getToken
 	@POST
@@ -74,7 +92,7 @@ public class TokenResources {
 		token.setDeviceName(deviceName);
 		//remove expired tokens from database or something
 		token.setBlacklisted(false);
-		token.setExpirationDate(System.currentTimeMillis());
+		token.setExpirationDate(getNewExpirationDate());
 		token.setGroups(u.getGroups());
 		token.setStudentID(u.getStudentId());
 		token.setUsername(u.getUsername());
@@ -88,10 +106,73 @@ public class TokenResources {
 	//renewToken
 	@POST
 	@Path("renewToken")
-	public Response renewToken(){
-		return Response.ok().build();
+	public Response renewToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		//check if token is still valid
+		try {
+			if(!validateToken(givenToken, signatureB64)){
+				return Response.status(Status.UNAUTHORIZED).build();
+			}
+		} catch (NoSuchAlgorithmException e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("500: NoSuchAlgorithm").build();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+		} catch (SignatureException e) {
+			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+		}
+		//TODO: Add announcement
+		//create new token
+		UserToken token = givenToken;
+		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
+		token.setExpirationDate(getNewExpirationDate()); //TODO: Add Jared's code
+		token.setGroups(userBean.get(token.getStudentID()).getGroups());
+		//token = tokenBean.persist(token);
+		token = tokenBean.save(token);
+		System.out.println("Renewing: "+givenToken.getUsername());
+		return Response.ok(token).build();
 	}
 	
+	private boolean validateToken(UserToken givenToken, String signatureB64) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+		if(signatureB64 == null){ //if there's no signature, just leave
+			System.out.println("no signature");
+			return false;
+		}
+		byte[] givenTokenBytes = tokenUtils.getJsonString(tokenUtils.getTokenObject(givenToken)).getBytes(StandardCharsets.UTF_8);
+		Signature sig = Signature.getInstance("SHA256withRSA");
+		sig.initVerify(cs.getPublicKey());
+		sig.update(givenTokenBytes);
+		if(!sig.verify(Base64.getDecoder().decode(signatureB64))){ //if key wasn't signed by us
+			System.out.println("key wasn't signed by us");
+			return false;
+		}
+		//load old token from database
+		List<UserToken> matches = tokenBean.getMatching(givenToken);
+		if(matches.size() != 1){ //if their token isn't real or is corrupted or is just somehow wrong to allow it to match with others
+			//TODO: Notify admin that a signed token has been found which is invalid!
+			System.out.println("Matches: "+matches.size());
+			return false;
+		}
+		UserToken oldToken = matches.get(0);
+		//check expiration date
+		if(oldToken.getExpirationDate() < System.currentTimeMillis()){ //if the expiration is before now, they're not authorized
+			System.out.println("Rejected for expiration date");
+			return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * Return an expiration date valid for the token currently being generated
+	 * @return
+	 */
+	private Long getNewExpirationDate(){
+		Calendar cal = Calendar.getInstance();
+		cal.add(Calendar.MONTH, 1);
+		return cal.getTimeInMillis();
+	}
+
 	//tokenValid
 	@GET
 	@Path("tokenValid")
@@ -109,8 +190,33 @@ public class TokenResources {
 	//listTokens
 	@GET
 	@Path("listTokens")
-	public Response listTokens(){
-		return Response.ok().build();
+	public Response listTokens(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		Gson gson = new Gson();
+		UserToken token = gson.fromJson(tokenString, UserToken.class);
+		try {
+			if(!validateToken(token, signatureB64)){
+				return Response.status(Status.UNAUTHORIZED).build();
+			}
+		} catch (InvalidKeyException | NoSuchAlgorithmException | SignatureException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+		}
+		UserToken key = new UserToken();
+		key.setStudentID(token.getStudentID());
+		JsonArrayBuilder jab = Json.createArrayBuilder();
+		DomainUser u = userBean.get(token.getStudentID());
+		List<UserGroup> groups = new LinkedList<>();
+		for(UserGroup g : u.getGroups()){
+			groups.add(g);
+		}
+		for(UserToken t : tokenBean.getMatching(key)){
+			if(!t.getBlacklisted() && t.getExpirationDate() > System.currentTimeMillis()){ //if it's not blacklisted and it's not expired
+				t.setGroups(groups);
+				jab.add(tokenUtils.getTokenObject(t));
+			}
+		}
+		return Response.ok(jab.build()).build();
 	}
 	
 	//subscribeToInvalidation
