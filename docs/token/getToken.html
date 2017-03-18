@@ -1,0 +1,265 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+</head>
+<body>
+<h2 id="get-token"><strong>Get Token</strong></h2>
+<pre><code>Authenticates a user to the system and returns a UserToken via json and a base64-encoded RSA signature of the UserToken if authentication is successful</code></pre>
+<ul>
+<li><p><strong>URL</strong></p>
+<p>/loginserver/resources/token/getToken</p></li>
+<li><p><strong>Method:</strong></p>
+<p><code>POST</code></p></li>
+<li><p><strong>URL Params</strong></p>
+<p><code>NONE</code></p></li>
+<li><p><strong>POST Body</strong></p>
+Json object with the following attributes:
+<ul>
+<li>username</li>
+<li>devicename</li>
+<li>password</li>
+</ul>
+<p><strong>Required:</strong></p>
+<pre><code>* `username=[string]`
+* `password=[string]`</code></pre></li>
+<li><p><strong>Success Response:</strong></p>
+<ul>
+<li><strong>HTTP Status Code:</strong> 200 OK</li>
+<li><strong>Headers in Response:</strong>
+<ul>
+<li>TokenSignature: WtHSxFAy6yO2Bepb4NgRxYhRUEmKS793gd1NBX/bDErBjD3CTiLA8p05RNIG8U96bkwy
+<ul>
+<li>the base64 encoded signature of the UserToken being returned</li>
+<li>The type of signature is SHA-256 with RSA, meaning the json String in the body of the response has a Sha256 digest taken and then that digest is 'signed' using the server's RSA private key. After being decoded from base64 into the raw bytes, anyone with the authentication server's public key can verify a token's authenticity by performing signature verification (google &quot;$yourLanguage verify RSA signature&quot; for information on how to do this)</li>
+</ul></li>
+</ul></li>
+<li><strong>Response Body:</strong></li>
+</ul>
+<div class="sourceCode"><table class="sourceCode javascript numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre></td><td class="sourceCode"><pre><code class="sourceCode javascript"><span class="op">{</span>
+    <span class="st">&quot;tokenId&quot;</span><span class="op">:</span> <span class="dv">8728935</span><span class="op">,</span>
+    <span class="st">&quot;studentID&quot;</span><span class="op">:</span> <span class="dv">591082</span><span class="op">,</span>
+    <span class="st">&quot;username&quot;</span><span class="op">:</span> <span class="st">&quot;pkirkland&quot;</span><span class="op">,</span>
+    <span class="st">&quot;deviceName&quot;</span><span class="op">:</span> <span class="st">&quot;EisenOS&quot;</span><span class="op">,</span>
+    <span class="st">&quot;expirationDate&quot;</span><span class="op">:</span> <span class="dv">1488842937819</span><span class="op">,</span>
+    <span class="st">&quot;blacklisted&quot;</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span>
+    <span class="st">&quot;employeeType&quot;</span><span class="op">:</span> <span class="st">&quot;student&quot;</span><span class="op">,</span>
+    <span class="st">&quot;groups&quot;</span><span class="op">:</span> [
+        <span class="op">{</span>
+            <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="dv">9235</span><span class="op">,</span>
+            <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;Software&quot;</span><span class="op">,</span>
+            <span class="st">&quot;ldapName&quot;</span><span class="op">:</span> <span class="st">&quot;cn=Software, cn=Groups, dc=example, dc=com&quot;</span>
+        <span class="op">},</span>
+        <span class="op">{</span>
+            <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="dv">9257</span><span class="op">,</span>
+            <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;Students&quot;</span><span class="op">,</span>
+            <span class="st">&quot;ldapName&quot;</span><span class="op">:</span> <span class="st">&quot;cn=Students, cn=Groups, dc=example, dc=com&quot;</span>
+        <span class="op">}</span>
+    ]
+<span class="op">}</span></code></pre></td></tr></table></div></li>
+<li><p><strong>Error Response:</strong></p>
+<ul>
+<li><strong>Code:</strong> 401 UNAUTHORIZED
+<ul>
+<li>Meaning: Incorrect username and/or password provided; we can't/won't specify which one was incorrect as this would represent a huge security problem (search StackExchange if you have questions)</li>
+<li><strong>Content:</strong> <code>{ &quot;error&quot; : &quot;Incorrect Username or Password&quot; }</code></li>
+</ul>
+<p>OR</p></li>
+<li><strong>Code:</strong> 500 INTERNAL SERVER ERROR
+<ul>
+<li>Meaning: A problem occurred and it probably has to do with LDAP</li>
+<li><strong>Content:</strong> <code>{ &quot;error&quot; : &quot;LDAP Error&quot; }</code></li>
+</ul></li>
+</ul></li>
+<li><p><strong>Sample Call:</strong></p>
+<strong>Python:</strong><br />
+Requirements:
+<ul>
+<li>the requests library is installed</li>
+</ul>
+<div class="sourceCode"><table class="sourceCode python numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+</pre></td><td class="sourceCode"><pre><code class="sourceCode python"><span class="co">#!/usr/bin/python2.7</span>
+<span class="co">#should be basically the same for python 3.5, just use the package python3-requests</span>
+
+<span class="im">import</span> json <span class="co">#import the json parsing package to retrieve the response as a dictionary</span>
+<span class="im">import</span> requests <span class="co">#import the requests library from python-requests</span>
+
+server <span class="op">=</span> <span class="st">&quot;localhost:8080&quot;</span> <span class="co">#input the FQDN/DNS name of the server, like google.com</span>
+tokenUrl <span class="op">=</span> <span class="st">&quot;http://&quot;</span><span class="op">+</span>server<span class="op">+</span><span class="st">&quot;/loginserver/resources/token/getToken&quot;</span> <span class="co">#input the rest of the url</span>
+
+hrs <span class="op">=</span> {<span class="st">&#39;Content-Type&#39;</span>: <span class="st">&#39;application/json&#39;</span>} <span class="co">#include the content-type header to inform the server it should expect json</span>
+
+authenticationJson <span class="op">=</span> <span class="st">&#39;{&quot;username&quot;: &quot;pkirkland&quot;, &quot;password&quot;: &quot;fuzzyBunny1234&quot;, &quot;devicename&quot;: &quot;EisenOS&quot;}&#39;</span> <span class="co">#This shouldn&#39;t ever be a hardcoded string, it is just for clarify in this example; If you want to generate a string of json the right way, look for &#39;python dictionary to json&#39; on StackExchange or Google</span>
+
+response <span class="op">=</span> requests.post(url<span class="op">=</span>tokenUrl, data<span class="op">=</span>authenticationJson, headers<span class="op">=</span>hrs) <span class="co">#perform the HTTP post request using the url of the API call and the json containing the username and password required to authenticate the user</span>
+
+<span class="cf">if</span> response.status_code <span class="op">==</span> <span class="dv">200</span>: <span class="co">#Server returned 200 OK response, that means we&#39;ve successfully logged in and should have been sent a user token</span>
+    <span class="bu">print</span> <span class="st">&#39;Success&#39;</span>
+    <span class="bu">print</span> <span class="st">&#39;TokenSignature: &#39;</span><span class="op">+</span>response.headers[<span class="st">&#39;TokenSignature&#39;</span>] <span class="co">#print the token signature in base64 returned by the server</span>
+    <span class="bu">print</span> <span class="st">&#39;Token: &#39;</span><span class="op">+</span>response.content <span class="co">#print the token issued by the server</span>
+
+<span class="cf">elif</span> response.status_code <span class="op">==</span> <span class="dv">401</span>: <span class="co">#The server rejected the username or password we sent</span>
+    <span class="bu">print</span> body[<span class="st">&#39;error&#39;</span>]
+
+<span class="cf">elif</span> response.status_code <span class="op">==</span> <span class="dv">500</span>: <span class="co">#The server had an error accessing LDAP</span>
+    <span class="bu">print</span> body[<span class="st">&#39;error&#39;</span>]
+<span class="cf">else</span>:
+    <span class="bu">print</span> <span class="st">&#39;Not sure what happened here&#39;</span>
+    <span class="bu">print</span> response.status_code</code></pre></td></tr></table></div>
+<p>The above program produces the following output if the username and password provided are accurate:<br />
+Success<br />
+TokenSignature: REAUehHg8ebkw3g3jeYuj/S2zVPUWk/ayPHXNUwm+VSd6C9iWv6cy1xy0dUCPWEQkVwBDWBNYQdzJD6Ky0+pTNGapmcihaCW2kUntVv3vBJPRarFhk1bAQX/+Db8wtkNTQVVIWDJiXDDNaUsyXxvKweL+pf7uBTKvBjO2FW96P+PQU5hkTR3bYz4O8Hcv7z1ts4/LGdCX++QZ6cyIloy7OLs4IXFALIyhVv71y13JGwMtshcT5rgGLbsHj43ZsMkFZgg844cx45lhHBWydEE577WKr0+GOIrYKa0w14UDssEnoDhFW3I1Az56Fvi7zgmd9D0slLyJPiW77eUIC+c4UbF/aqMukmeIMiOVnFiGbOlBcE9UGRtefqkygRIqXFPHxuqMbJE6EzgXvLuZNApFk2b5eCXSdVC/gaAmlBjGeDz6TIBPf9q72xG9SjbdsO3S+0PlTOAmZmleYqCzzTRqnZ/bAaWdcmv/UQtUuCY+uRoBGu6+LRHIOArSthC/Sh45XZ1ZvqWrBSTEf15g1zNmCNghCeGbdI5Z/rUxx21q6Wkodgmca3wwX27G7RdTfoRcdAoRo9bZHrghT2xXmcc8uu0fBbCaWDIZzNeSSQ8GsunO7hL5iAPx4HRo5StjLK4li4Eemi4BDeVuhY/SsvtNcMZFwP6U4Xi12X9BCpdNOk=<br />
+Token: {&quot;tokenId&quot;:4,&quot;studentID&quot;:591082,&quot;username&quot;:&quot;pkirkland&quot;,&quot;deviceName&quot;:&quot;EisenOS&quot;,&quot;expirationDate&quot;:1492226587235,&quot;blacklisted&quot;:false,&quot;employeeType&quot;:&quot;student&quot;,&quot;groups&quot;:[{&quot;id&quot;:935,&quot;name&quot;:&quot;cs&quot;,&quot;ldapName&quot;:&quot;cn=cs,cn=Groups,dc=campus,dc=westmont,dc=edu&quot;}]}</p>
+<br />
+<strong>Bash:</strong><br />
+Requirements:
+<ul>
+<li>openssl is installed</li>
+<li>curl is installed</li>
+<li>coreutils is installed (should always be present, provides the 'base64' command)</li>
+<li>public key of the authentication system is in PEM format in the file 'auth-pubkey.pub'</li>
+</ul>
+<div class="sourceCode"><table class="sourceCode bash numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+</pre></td><td class="sourceCode"><pre><code class="sourceCode bash"><span class="co">#!/bin/bash</span>
+
+<span class="ot">SERVER=</span><span class="st">&quot;wmapp.cs.westmont.edu&quot;</span> <span class="co">#Set the name of the server</span>
+<span class="ot">TOKENURL=</span><span class="st">&quot;http://</span><span class="ot">$SERVER</span><span class="st">/loginserver/resources/token/getToken&quot;</span> <span class="co">#Set the complete URL of the API call</span>
+<span class="co">#For clarity, declare the variables we&#39;re about to collect</span>
+<span class="ot">USERNAME=</span><span class="st">&quot;&quot;</span>
+<span class="ot">PASS=</span><span class="st">&quot;&quot;</span>
+<span class="ot">DEVICENAME=</span><span class="st">&quot;&quot;</span>
+
+<span class="co">#Get the username, device name and password from the user</span>
+<span class="kw">echo</span> -n <span class="st">&quot;Username:&quot;</span>
+<span class="kw">read</span> <span class="ot">USERNAME</span>
+<span class="kw">echo</span> -n <span class="st">&quot;Device name:&quot;</span>
+<span class="kw">read</span> <span class="ot">DEVICENAME</span>
+<span class="kw">echo</span> -n <span class="st">&quot;Password:&quot;</span>
+<span class="kw">read</span> -s <span class="ot">PASS</span> <span class="co">#-s flag is used so that the password isn&#39;t visible in the terminal</span>
+
+<span class="ot">dataString=</span><span class="st">&quot;{</span><span class="dt">\&quot;</span><span class="st">username</span><span class="dt">\&quot;</span><span class="st"> : </span><span class="dt">\&quot;</span><span class="ot">$USERNAME</span><span class="dt">\&quot;</span><span class="st">, </span><span class="dt">\&quot;</span><span class="st">password</span><span class="dt">\&quot;</span><span class="st"> : </span><span class="dt">\&quot;</span><span class="ot">$PASS</span><span class="dt">\&quot;</span><span class="st">, </span><span class="dt">\&quot;</span><span class="st">devicename</span><span class="dt">\&quot;</span><span class="st"> : </span><span class="dt">\&quot;</span><span class="ot">$DEVICENAME</span><span class="dt">\&quot;</span><span class="st">}&quot;</span> <span class="co">#Create the json string with the username, password and device name inside</span>
+<span class="kw">curl</span> -XPOST -H <span class="st">&#39;Content-Type: application/json&#39;</span> -d <span class="st">&quot;</span><span class="ot">$dataString</span><span class="st">&quot;</span> --dump-header <span class="st">&quot;resp-headers.txt&quot;</span> <span class="st">&quot;</span><span class="ot">$TOKENURL</span><span class="st">&quot;</span> -o <span class="st">&quot;token.json&quot;</span> <span class="co">#Perform an HTTP post request against the API endpoint, saving the headers returned from the server in resp-headers.txt and saving the body of the response from the server in token.json</span>
+
+<span class="co">#extract signature and decode base64 into binary</span>
+<span class="kw">cat</span> resp-headers.txt <span class="kw">|grep</span> TokenSignature<span class="kw">|cut</span> -d: -f2<span class="kw">|sed</span> <span class="st">&#39;s/^ //&#39;</span><span class="kw">&gt;</span> sigb64.txt <span class="co">#extract the token&#39;s signature into the file sigb64.txt</span>
+<span class="kw">base64</span> -d sigb64.txt<span class="kw">&gt;</span> sig.bin <span class="co">#decode the base64 encoded signature back into it&#39;s natural binary form and write it into the file sig.bin</span>
+
+<span class="co">#Verify the signature with OpenSSL using the SHA256 with RSA signature algorithm</span>
+<span class="kw">openssl</span> dgst -sha256 -verify auth-pubkey.pub -signature sig.bin token.json <span class="co">#This command will print Verification failed or Verification ok</span></code></pre></td></tr></table></div></li>
+</ul>
+</body>
+</html>

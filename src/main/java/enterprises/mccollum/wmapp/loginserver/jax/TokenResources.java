@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
@@ -33,6 +34,8 @@ import com.unboundid.ldap.sdk.LDAPException;
 
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
+import enterprises.mccollum.wmapp.authobjects.InvalidationSubscription;
+import enterprises.mccollum.wmapp.authobjects.InvalidationSubscriptionBean;
 import enterprises.mccollum.wmapp.authobjects.UserGroup;
 import enterprises.mccollum.wmapp.authobjects.UserGroupBean;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
@@ -68,6 +71,9 @@ public class TokenResources {
 	@Inject
 	CryptoSingleton cs;
 	
+	@Inject
+	InvalidationSubscriptionBean invalidations;
+	
 	//getToken
 	@POST
 	@Path("getToken")
@@ -75,7 +81,12 @@ public class TokenResources {
 	//public Response getToken(@FormParam("username")String username, @FormParam("password")String password, @FormParam("devicename")String deviceName){
 		String username = obj.getString("username");
 		String password = obj.getString("password");
-		String deviceName = obj.getString("devicename");
+		String deviceName = null;
+		if(obj.containsKey("devicename") && !obj.isNull("devicename")){
+			deviceName = obj.getString("devicename");
+		}else{
+			deviceName = UUID.randomUUID().toString(); //generate random string from UUID
+		}
 		System.out.println("username: "+username);
 		DomainUser u = null;
 		try {
@@ -83,10 +94,10 @@ public class TokenResources {
 		} catch (LDAPBindException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return Response.status(Status.FORBIDDEN).entity("Incorrect username or password").build();
+			return Response.status(Status.UNAUTHORIZED).entity("{\"error\": \"Incorrect username or password\"}").build();
 		} catch(LDAPException e){
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("LDAP error").build(); //return useful error to client for debugging porpoises
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("{\"error\": \"LDAP error\"}").build(); //return useful error to client for debugging porpoises
 		}
 		UserToken token = new UserToken();
 		token.setDeviceName(deviceName);
@@ -176,14 +187,14 @@ public class TokenResources {
 	//tokenValid
 	@GET
 	@Path("tokenValid")
-	public Response isValidToken(){
+	public Response isValidToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
 		return Response.ok().build();
 	}
 	
 	//invalidateToken
 	@POST
 	@Path("invalidateToken")
-	public Response invalidateToken(){
+	public Response invalidateToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
 		return Response.ok().build();
 	}
 	
@@ -222,10 +233,19 @@ public class TokenResources {
 	//subscribeToInvalidation
 	@POST
 	@Path("subscribeToInvalidation")
-	public Response subscribeToInvalidation(){
+	public Response subscribeToInvalidation(UserToken givenToken, @HeaderParam("invalidationEndpoint")String url, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		InvalidationSubscription invalidSub = new InvalidationSubscription();
+		invalidSub.setUrl(url);
+		invalidSub.setTokenId(givenToken.getTokenId());
+		invalidations.persist(invalidSub);
 		return Response.ok().build();
 	}
 	
+	/**
+	 * Designed to fix infinite node recursion
+	 * @param o
+	 * @return
+	 */
 	private Object fixRecursion(Object o){
 		if(o instanceof UserToken){
 			UserToken u = (UserToken)o;
