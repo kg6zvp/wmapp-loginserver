@@ -17,8 +17,8 @@ import java.util.UUID;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.json.Json;
-import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
@@ -94,17 +94,16 @@ public class TokenResources {
 		} catch (LDAPBindException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return Response.status(Status.UNAUTHORIZED).entity("{\"error\": \"Incorrect username or password\"}").build();
+			return Response.status(Status.UNAUTHORIZED).entity(mkErrorEntity("Incorrect username or password")).build();
 		} catch(LDAPException e){
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("{\"error\": \"LDAP error\"}").build(); //return useful error to client for debugging porpoises
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity("LDAP error")).build(); //return useful error to client for debugging porpoises
 		}
 		UserToken token = new UserToken();
 		token.setDeviceName(deviceName);
 		//remove expired tokens from database or something
 		token.setBlacklisted(false);
 		token.setExpirationDate(getNewExpirationDate());
-		token.setGroups(u.getGroups());
 		token.setStudentID(u.getStudentId());
 		token.setUsername(u.getUsername());
 		token.setEmployeeType(u.getEmployeeType());
@@ -112,6 +111,12 @@ public class TokenResources {
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
 		//do magical encryption stuff here probably
 		return Response.ok(token).build();
+	}
+	
+	private JsonObject mkErrorEntity(String msg){
+		JsonObjectBuilder job = Json.createObjectBuilder();
+		job.add("error", msg);
+		return job.build();
 	}
 	
 	//renewToken
@@ -138,8 +143,6 @@ public class TokenResources {
 		UserToken token = givenToken;
 		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
 		token.setExpirationDate(getNewExpirationDate()); //TODO: Add Jared's code
-		token.setGroups(userBean.get(token.getStudentID()).getGroups());
-		//token = tokenBean.persist(token);
 		token = tokenBean.save(token);
 		System.out.println("Renewing: "+givenToken.getUsername());
 		return Response.ok(token).build();
@@ -150,7 +153,7 @@ public class TokenResources {
 			System.out.println("no signature");
 			return false;
 		}
-		byte[] givenTokenBytes = tokenUtils.getJsonString(tokenUtils.getTokenObject(givenToken)).getBytes(StandardCharsets.UTF_8);
+		byte[] givenTokenBytes = tokenUtils.getTokenString(givenToken).getBytes(StandardCharsets.UTF_8);
 		Signature sig = Signature.getInstance("SHA256withRSA");
 		sig.initVerify(cs.getPublicKey());
 		sig.update(givenTokenBytes);
@@ -215,19 +218,18 @@ public class TokenResources {
 		}
 		UserToken key = new UserToken();
 		key.setStudentID(token.getStudentID());
-		JsonArrayBuilder jab = Json.createArrayBuilder();
 		DomainUser u = userBean.get(token.getStudentID());
 		List<UserGroup> groups = new LinkedList<>();
 		for(UserGroup g : u.getGroups()){
 			groups.add(g);
 		}
+		List<UserToken> outstandingTokens = new LinkedList<>();
 		for(UserToken t : tokenBean.getMatching(key)){
 			if(!t.getBlacklisted() && t.getExpirationDate() > System.currentTimeMillis()){ //if it's not blacklisted and it's not expired
-				t.setGroups(groups);
-				jab.add(tokenUtils.getTokenObject(t));
+				outstandingTokens.add(t);
 			}
 		}
-		return Response.ok(jab.build()).build();
+		return Response.ok().build();
 	}
 	
 	//subscribeToInvalidation
@@ -247,12 +249,7 @@ public class TokenResources {
 	 * @return
 	 */
 	private Object fixRecursion(Object o){
-		if(o instanceof UserToken){
-			UserToken u = (UserToken)o;
-			for(UserGroup g : u.getGroups())
-				g.setUsers(null);
-			return u;
-		}else if(o instanceof UserGroup){
+		if(o instanceof UserGroup){
 			UserGroup g = (UserGroup)o;
 			for(DomainUser u : g.getUsers()){ //list users, but don't list groups and users for every user
 				u.setGroups(null);

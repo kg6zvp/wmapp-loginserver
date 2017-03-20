@@ -30,7 +30,8 @@ public class CryptoSingleton {
 	 */
 	KeyPair serviceKey;
 	
-	public static final String KEYSTORE_PATH = "/home/smccollum/wmks.jks";
+	public static final String KEYSTORE_PATH = System.getenv("WMKS_FILE");
+	//public static final String KEYSTORE_PATH = "/home/smccollum/wmks.jks";
 	private static final char[] KEYSTORE_PASS = "password".toCharArray();
 	
 	public static final String KEY_ALIAS = "WMAUTH";

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
@@ -11,13 +12,13 @@ import java.security.SignatureException;
 import java.util.Base64;
 
 import javax.inject.Inject;
-import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
+
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.loginserver.CryptoSingleton;
 import enterprises.mccollum.wmapp.loginserver.TokenUtils;
@@ -46,10 +47,9 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 	public void writeTo(UserToken t, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
 		try {
 			//sign token
-			JsonObjectBuilder job = tokenUtils.getTokenObject(t);
-			String objString = tokenUtils.getJsonString(job);
+			String objString = tokenUtils.getTokenString(t); //tokenUtils.getJsonString(job);
 			System.out.println("token: "+objString);
-			final byte[] unsigned = objString.getBytes("UTF-8");
+			final byte[] unsigned = objString.getBytes(StandardCharsets.UTF_8);
 			Signature signer = Signature.getInstance("SHA256withRSA");
 			signer.initSign(cs.getPrivateKey()); //should be the private key here, maybe retrieve from singleton?
 			signer.update(unsigned); //prepare for signature
@@ -57,7 +57,7 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 			String signatureString = Base64.getEncoder().encodeToString(signature);
 			//add signature to the headers
 			httpHeaders.add(UserToken.SIGNATURE_HEADER, signatureString);
-			entityStream.write(objString.getBytes("UTF-8"));
+			entityStream.write(objString.getBytes(StandardCharsets.UTF_8));
 		/*} catch (JAXBException e) { 
 			e.printStackTrace();
 			System.out.println("Something went wrong with the conversion of the object to Json. Why?? I have no idea!:w");//*/

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SERVER="auth.wmapp.mccollum.enterprises"
 USERNAME=""
 DEVICENAME=""
 exec 2> /dev/null #may need to remove error redirection
@@ -37,7 +38,7 @@ function doLogin(){
 
 	#do curl stuff
 	dataString="{\"username\" : \"$1\", \"password\" : \"$PASS\", \"devicename\" : \"$2\"}"
-	curl -XPOST -H 'Content-Type: application/json' -d "$dataString" --dump-header "resp-headers.txt" http://localhost:8080/loginserver/resources/token/getToken -o "token.json"
+	curl -XPOST -H 'Content-Type: application/json' -d "$dataString" --dump-header "resp-headers.txt" "http://$SERVER/loginserver/resources/token/getToken" -o "token.json"
 }
 
 function printHelp(){
