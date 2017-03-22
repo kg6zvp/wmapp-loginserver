@@ -3,7 +3,7 @@
 	<persistence-unit name="loginserver">
 		<jta-data-source>java:jboss/datasources/loginserverDS</jta-data-source>
 		<properties>
-			<property name="javax.persistence.schema-generation.database.action" value="create"/>
+			<property name="hbm2ddl.auto" value="update"/>
 			<property name="hibernate.hbm2ddl.import_files_sql_extractor" value="org.hibernate.tool.hbm2ddl.MultipleLinesSqlCommandExtractor" />
 		</properties>
 	</persistence-unit>
