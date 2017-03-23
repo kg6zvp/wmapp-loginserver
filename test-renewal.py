@@ -1,12 +1,13 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
+#/usr/bin/python2
 
 import json
 import requests
 
-server = "localhost:8080"
+server = "auth.wmapp.mccollum.enterprises"
 
-renewUrl = "http://"+server+"/loginserver/resources/token/renewToken"
-listUrl = "http://"+server+"/loginserver/resources/token/listTokens"
+renewUrl = "http://"+server+"/resources/token/renewToken"
+listUrl = "http://"+server+"/resources/token/listTokens"
 
 tokenSignature=" "
 tokenString=" "

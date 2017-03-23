@@ -84,14 +84,27 @@ public class TokenResources {
 	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
 	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
 	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR There was an error with the LDAP query.
+	 * @apiSuccess (Success Response Header) {String} TokenSignature	The base64 encoded SHA256 RSA signature of the token that needs to be verified.
 	 * @apiSuccess {long} tokenId	The UUID of the token generated
 	 * @apiSuccess {long} studentId	The student ID of the user.
 	 * @apiSuccess {String} username	The username of the user.
 	 * @apiSuccess {String} devicename	The name of the device being used.
 	 * @apiSuccess {long} expirationDate	The expiration date of the token in milliseconds EPOCH time.
-	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be false if invalidateToken has been called on this token.
+	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be true if invalidateToken has been called on this token.
 	 * @apiSuccess {String} employeeType	The type of the user. Can be student, facstaff, alum, or community.
-	 * @apiHeader {String} TokenSignature	The base64 encoded signature of the UserToken being returned.
+	 * @apiExample Success Response Header Example
+	 * TokenSignature: NU2edZPpt1RjkvJjNM2t1l/fP0p8in+6mqk7Nh6Govxo6EZaei4B16iHMLDY0PwB/FvAvZwQEuT25l6CQSLTC4sC8KBWdIDGTV/k698ZEOqoytibRU05AKrGmcSZsdfqdhZAS9cp1apGTQXrijP/0BicpjIM+sVB71sN/mMecsVSG1qHJxpiothNgcuJCG0uBgMwLKpuhhZ67s6kDbr7pyH49bal4ooBfbmS50PcaN5IhFaD7YtOb1FRD6dK0DgYwcjOulfQ4I3HXgnQ1i9IWXjQbFKSFNlpg414yW9tA7xgcL3bvIiRSpruW6J2LaOKQNv9qQO5wXbcQ3BrWXPc7jbljrH8296kBfhzPmAtH2xDg4uzI/JRby7NS5ftDGOouP6ptBp/Do4pMQviPDX46dcYzD5c=
+	 * @apiExample Success Response Body Example
+	 * {
+  "tokenId": 5,
+  "studentID": 851,
+  "username": "spidey",
+  "deviceName": "iphone7",
+  "employeeType": "student",
+  "expirationDate": 1492934837502,
+  "blacklisted": false
+}
+	 *
 	 */
 	@POST
 	@Path("getToken")
@@ -152,8 +165,20 @@ public class TokenResources {
 	 * @apiSuccess {String} username	The username of the user.
 	 * @apiSuccess {String} devicename	The name of the device being used.
 	 * @apiSuccess {long} expirationDate	The expiration date of the token in milliseconds EPOCH time.
-	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be false if invalidateToken has been called on this token.
+	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be true if invalidateToken has been called on this token.
 	 * @apiSuccess {String} employeeType	The type of the user. Can be student, facstaff, alum, or community.
+	 * @apiExample Success Response Header Example
+	 * TokenSignature: NU2edZPpt1RjkvJjNM2t1l/fP0p8in+6mqk7Nh6Govxo6EZaei4B16iHMLDY0PwB/FvAvZwQEuT25l6CQSLTC4sC8KBWdIDGTV/k698ZEOqoytibRU05AKrGmcSZsdfqdhZAS9cp1apGTQXrijP/0BicpjIM+sVB71sN/mMecsVSG1qHJxpiothNgcuJCG0uBgMwLKpuhhZ67s6kDbr7pyH49bal4ooBfbmS50PcaN5IhFaD7YtOb1FRD6dK0DgYwcjOulfQ4I3HXgnQ1i9IWXjQbFKSFNlpg414yW9tA7xgcL3bvIiRSpruW6J2LaOKQNv9qQO5wXbcQ3BrWXPc7jbljrH8296kBfhzPmAtH2xDg4uzI/JRby7NS5ftDGOouP6ptBp/Do4pMQviPDX46dcYzD5c=
+	 * @apiExample Success Response Body Example
+	 * {
+  "tokenId": 5,
+  "studentID": 851,
+  "username": "spidey",
+  "deviceName": "iphone7",
+  "employeeType": "student",
+  "expirationDate": 1492934837502, // Will return with updated Expiration Date
+  "blacklisted": false
+}
 	 */
 	@POST
 	@Path("renewToken")
@@ -266,7 +291,29 @@ public class TokenResources {
 	 * @apiParam {String} Token The User Token used to retrieve all tokens associated with the user.
 	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
 	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR Can be No Such Algorithm, Invalid Signature, or Invalid Public Key.
-	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.	 
+	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
+	 * @apiExample  Success Response
+	 * [
+  {
+    "tokenId": 4,
+    "studentID": 935,
+    "username": "erichtofen",
+    "deviceName": "box",
+    "employeeType": "student",
+    "expirationDate": 1492934768266,
+    "blacklisted": false
+  },
+  {
+    "tokenId": 5,
+    "studentID": 935,
+    "username": "erichtofen",
+    "deviceName": "mk2",
+    "employeeType": "student",
+    "expirationDate": 1492934837502,
+    "blacklisted": false
+  }
+]
+	 *
 	 */
 	@GET
 	@Path("listTokens")
