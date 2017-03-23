@@ -75,6 +75,24 @@ public class TokenResources {
 	InvalidationSubscriptionBean invalidations;
 	
 	//getToken
+	/**
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/getToken Get Token 
+	 * @apiName PostGetToken
+	 * @apiGroup Token
+	 * @apiDescription This call will retrieve a User Token to use for all microservices.
+	 * @apiParam {String} Token The User Token used to authenticate.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
+	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR There was an error with the LDAP query.
+	 * @apiSuccess {long} tokenId	The UUID of the token generated
+	 * @apiSuccess {long} studentId	The student ID of the user.
+	 * @apiSuccess {String} username	The username of the user.
+	 * @apiSuccess {String} devicename	The name of the device being used.
+	 * @apiSuccess {long} expirationDate	The expiration date of the token in milliseconds EPOCH time.
+	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be false if invalidateToken has been called on this token.
+	 * @apiSuccess {String} employeeType	The type of the user. Can be student, facstaff, alum, or community.
+	 * @apiHeader {String} TokenSignature	The base64 encoded signature of the UserToken being returned.
+	 */
 	@POST
 	@Path("getToken")
 	public Response getToken(JsonObject obj){
@@ -120,6 +138,23 @@ public class TokenResources {
 	}
 	
 	//renewToken
+	/**
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/renewToken Renew Token
+	 * @apiName PostRenewToken
+	 * @apiGroup Token
+	 * @apiDescription This call allows a user to update a User Token with a new expiration date. 
+	 * @apiParam {String} Token The User Token used to authenticate.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR Can be No Such Algorithm, Invalid Signature, or Invalid Public Key.
+	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
+	 * @apiSuccess {long} tokenId	The UUID of the token generated
+	 * @apiSuccess {long} studentId	The student ID of the user.
+	 * @apiSuccess {String} username	The username of the user.
+	 * @apiSuccess {String} devicename	The name of the device being used.
+	 * @apiSuccess {long} expirationDate	The expiration date of the token in milliseconds EPOCH time.
+	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be false if invalidateToken has been called on this token.
+	 * @apiSuccess {String} employeeType	The type of the user. Can be student, facstaff, alum, or community.
+	 */
 	@POST
 	@Path("renewToken")
 	public Response renewToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
@@ -129,20 +164,20 @@ public class TokenResources {
 				return Response.status(Status.UNAUTHORIZED).build();
 			}
 		} catch (NoSuchAlgorithmException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("500: NoSuchAlgorithm").build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity("500: NoSuchAlgorithm")).build();
 		} catch (InvalidKeyException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity(e.getMessage())).build();
 		} catch (SignatureException e) {
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity(e.getMessage())).build();
 		}
 		//TODO: Add announcement
 		//create new token
 		UserToken token = givenToken;
 		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
-		token.setExpirationDate(getNewExpirationDate()); //TODO: Add Jared's code
+		token.setExpirationDate(getNewExpirationDate());
 		token = tokenBean.save(token);
 		System.out.println("Renewing: "+givenToken.getUsername());
 		return Response.ok(token).build();
@@ -188,20 +223,51 @@ public class TokenResources {
 	}
 
 	//tokenValid
+	/**
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/resources/token/tokenValid Check Valid Token
+	 * @apiName GetTokenValid
+	 * @apiGroup Token
+	 * @apiDescription This call is for checking if a User Token is valid. 
+	 * @apiParam {String} Token The token that needs to be checked.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature that needs to be verified.
+	 * 
+	 * 
+	 * @param givenToken The User Token given that you are trying to check the validity of.
+	 * @param signatureB64 The SHA256 RSA signature of the User Token that you are trying to verify.
+	 * @return Not implemented yet.
+	 */
 	@GET
 	@Path("tokenValid")
-	public Response isValidToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		return Response.ok().build();
+	public Response isValidToken(@HeaderParam(UserToken.TOKEN_HEADER)String givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		return Response.status(Status.NOT_IMPLEMENTED).build();
 	}
 	
 	//invalidateToken
+	/**
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/invalidateToken Invalidate Token
+	 * @apiName PostInvalidateToken
+	 * @apiGroup Token
+	 * @apiDescription This call allows a user to invalidate a token on another device that they are signed in on. 
+	 * @apiParam {String} Token The User Token used to authenticate.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 */
 	@POST
 	@Path("invalidateToken")
 	public Response invalidateToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		return Response.ok().build();
+		return Response.status(Status.NOT_IMPLEMENTED).build();
 	}
 	
 	//listTokens
+	/**
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/resources/token/listTokens Get Token List
+	 * @apiName GetTokenList
+	 * @apiGroup Token
+	 * @apiDescription This call is for retrieving all the tokens associated with the user account. 
+	 * @apiParam {String} Token The User Token used to retrieve all tokens associated with the user.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR Can be No Such Algorithm, Invalid Signature, or Invalid Public Key.
+	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.	 
+	 */
 	@GET
 	@Path("listTokens")
 	public Response listTokens(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
@@ -218,44 +284,33 @@ public class TokenResources {
 		}
 		UserToken key = new UserToken();
 		key.setStudentID(token.getStudentID());
-		DomainUser u = userBean.get(token.getStudentID());
-		List<UserGroup> groups = new LinkedList<>();
-		for(UserGroup g : u.getGroups()){
-			groups.add(g);
-		}
 		List<UserToken> outstandingTokens = new LinkedList<>();
 		for(UserToken t : tokenBean.getMatching(key)){
 			if(!t.getBlacklisted() && t.getExpirationDate() > System.currentTimeMillis()){ //if it's not blacklisted and it's not expired
 				outstandingTokens.add(t);
 			}
 		}
-		return Response.ok().build();
+		return Response.ok(outstandingTokens).build();
 	}
 	
 	//subscribeToInvalidation
+	/**
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/subscribeToInvalidation Subscribe To Token Invalidation
+	 * @apiName PostInvalidTokenSubscription
+	 * @apiGroup Token
+	 * @apiDescription This call allows a microservice to subscribe to updates from the central server for token invalidations. 
+	 * @apiParam {String} Token The User Token used to authenticate.
+	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 */
 	@POST
 	@Path("subscribeToInvalidation")
 	public Response subscribeToInvalidation(UserToken givenToken, @HeaderParam("invalidationEndpoint")String url, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		//TODO: Add authentication and authorization checks.
 		InvalidationSubscription invalidSub = new InvalidationSubscription();
 		invalidSub.setUrl(url);
 		invalidSub.setTokenId(givenToken.getTokenId());
 		invalidations.persist(invalidSub);
-		return Response.ok().build();
+		return Response.status(Status.NOT_IMPLEMENTED).build();
 	}
 	
-	/**
-	 * Designed to fix infinite node recursion
-	 * @param o
-	 * @return
-	 */
-	private Object fixRecursion(Object o){
-		if(o instanceof UserGroup){
-			UserGroup g = (UserGroup)o;
-			for(DomainUser u : g.getUsers()){ //list users, but don't list groups and users for every user
-				u.setGroups(null);
-			}
-			return g;
-		}
-		return null;
-	}
 }
