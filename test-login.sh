@@ -38,7 +38,7 @@ function doLogin(){
 
 	#do curl stuff
 	dataString="{\"username\" : \"$1\", \"password\" : \"$PASS\", \"devicename\" : \"$2\"}"
-	curl -XPOST -H 'Content-Type: application/json' -d "$dataString" --dump-header "resp-headers.txt" "http://$SERVER/resources/token/getToken" -o "token.json"
+	curl -XPOST -H 'Content-Type: application/json' -d "$dataString" --dump-header "resp-headers.txt" "http://$SERVER/api/token/getToken" -o "token.json"
 }
 
 function printHelp(){

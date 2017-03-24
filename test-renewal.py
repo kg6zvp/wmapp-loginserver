@@ -6,8 +6,8 @@ import requests
 
 server = "auth.wmapp.mccollum.enterprises"
 
-renewUrl = "http://"+server+"/resources/token/renewToken"
-listUrl = "http://"+server+"/resources/token/listTokens"
+renewUrl = "http://"+server+"/api/token/renewToken"
+listUrl = "http://"+server+"/api/token/listTokens"
 
 tokenSignature=" "
 tokenString=" "

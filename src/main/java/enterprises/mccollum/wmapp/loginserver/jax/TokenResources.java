@@ -36,7 +36,6 @@ import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
 import enterprises.mccollum.wmapp.authobjects.InvalidationSubscription;
 import enterprises.mccollum.wmapp.authobjects.InvalidationSubscriptionBean;
-import enterprises.mccollum.wmapp.authobjects.UserGroup;
 import enterprises.mccollum.wmapp.authobjects.UserGroupBean;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
@@ -76,7 +75,7 @@ public class TokenResources {
 	
 	//getToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/getToken Get Token 
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/getToken Get Token 
 	 * @apiName PostGetToken
 	 * @apiGroup Token
 	 * @apiDescription This call will retrieve a User Token to use for all microservices.
@@ -152,7 +151,7 @@ public class TokenResources {
 	
 	//renewToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/renewToken Renew Token
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/renewToken Renew Token
 	 * @apiName PostRenewToken
 	 * @apiGroup Token
 	 * @apiDescription This call allows a user to update a User Token with a new expiration date. 
@@ -249,7 +248,7 @@ public class TokenResources {
 
 	//tokenValid
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/resources/token/tokenValid Check Valid Token
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/tokenValid Check Valid Token
 	 * @apiName GetTokenValid
 	 * @apiGroup Token
 	 * @apiDescription This call is for checking if a User Token is valid. 
@@ -269,7 +268,7 @@ public class TokenResources {
 	
 	//invalidateToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/invalidateToken Invalidate Token
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/invalidateToken Invalidate Token
 	 * @apiName PostInvalidateToken
 	 * @apiGroup Token
 	 * @apiDescription This call allows a user to invalidate a token on another device that they are signed in on. 
@@ -284,7 +283,7 @@ public class TokenResources {
 	
 	//listTokens
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/resources/token/listTokens Get Token List
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/listTokens Get Token List
 	 * @apiName GetTokenList
 	 * @apiGroup Token
 	 * @apiDescription This call is for retrieving all the tokens associated with the user account. 
@@ -342,7 +341,7 @@ public class TokenResources {
 	
 	//subscribeToInvalidation
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/resources/token/subscribeToInvalidation Subscribe To Token Invalidation
+	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/subscribeToInvalidation Subscribe To Token Invalidation
 	 * @apiName PostInvalidTokenSubscription
 	 * @apiGroup Token
 	 * @apiDescription This call allows a microservice to subscribe to updates from the central server for token invalidations. 

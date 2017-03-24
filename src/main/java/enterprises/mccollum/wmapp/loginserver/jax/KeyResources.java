@@ -18,7 +18,7 @@ public class KeyResources {
 	private final static String END_PUBKEY_PADDING = "-----END PUBLIC KEY-----";
 	
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/resources/key/getPubKey Request Public Key
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/key/getPubKey Request Public Key
 	 * @apiName GetPubKey
 	 * @apiGroup Key 
 	 * @apiDescription This method is for requesting the public key which is used to verify the signature on a signed user token.
