@@ -1,5 +1,6 @@
 package enterprises.mccollum.wmapp.loginserver;
 
+import java.util.Calendar;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -10,6 +11,11 @@ import com.google.gson.Gson;
 
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 
+/**
+ * 
+ * @author smccollum
+ *
+ */
 @Singleton
 @Startup
 public class TokenUtils {
@@ -26,5 +32,15 @@ public class TokenUtils {
 	
 	public String getTokenString(UserToken givenToken) {
 		return gson.toJson(givenToken);
+	}
+
+	/**
+	 * Return an expiration date valid for the token currently being generated
+	 * @return
+	 */
+	public Long getNewExpirationDate(){
+		Calendar cal = Calendar.getInstance();
+		cal.add(Calendar.MONTH, 1);
+		return cal.getTimeInMillis();
 	}
 }

@@ -3,28 +3,23 @@
  */
 package enterprises.mccollum.wmapp.loginserver.jax;
 
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.Signature;
 import java.security.SignatureException;
-import java.util.Base64;
-import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
-import javax.json.Json;
 import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -36,12 +31,13 @@ import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
 import enterprises.mccollum.wmapp.authobjects.InvalidationSubscription;
 import enterprises.mccollum.wmapp.authobjects.InvalidationSubscriptionBean;
+import enterprises.mccollum.wmapp.authobjects.TestUser;
 import enterprises.mccollum.wmapp.authobjects.UserGroupBean;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
-import enterprises.mccollum.wmapp.loginserver.CryptoSingleton;
 import enterprises.mccollum.wmapp.loginserver.LdapCapture;
 import enterprises.mccollum.wmapp.loginserver.TokenUtils;
+import enterprises.mccollum.wmapp.loginserver.ValidationUtils;
 
 /**
  * @author smccollum
@@ -49,8 +45,8 @@ import enterprises.mccollum.wmapp.loginserver.TokenUtils;
  */
 @RequestScoped
 @Path("token")
-@Produces({ "application/json", "application/xml" })
-@Consumes({ "application/json", "application/xml" })
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class TokenResources {
 	@Inject
 	DomainUserBean userBean;
@@ -65,13 +61,19 @@ public class TokenResources {
 	LdapCapture ldapManager;
 	
 	@Inject
-	TokenUtils tokenUtils;
-	
-	@Inject
-	CryptoSingleton cs;
-	
-	@Inject
 	InvalidationSubscriptionBean invalidations;
+	
+	@Inject
+	ValidationUtils validationUtils;
+	
+	@Inject
+	APIUtils apiUtils;
+	
+	@Inject
+	TokenUtils tokenUtils;
+
+	@Inject
+	TestJax testJax;
 	
 	//getToken
 	/**
@@ -110,6 +112,8 @@ public class TokenResources {
 	public Response getToken(JsonObject obj){
 	//public Response getToken(@FormParam("username")String username, @FormParam("password")String password, @FormParam("devicename")String deviceName){
 		String username = obj.getString("username");
+		if(username.equals(TestUser.USERNAME))
+			return testJax.getToken(obj);
 		String password = obj.getString("password");
 		String deviceName = null;
 		if(obj.containsKey("devicename") && !obj.isNull("devicename")){
@@ -124,16 +128,16 @@ public class TokenResources {
 		} catch (LDAPBindException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return Response.status(Status.UNAUTHORIZED).entity(mkErrorEntity("Incorrect username or password")).build();
+			return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("Incorrect username or password")).build();
 		} catch(LDAPException e){
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity("LDAP error")).build(); //return useful error to client for debugging porpoises
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("LDAP error")).build(); //return useful error to client for debugging porpoises
 		}
 		UserToken token = new UserToken();
 		token.setDeviceName(deviceName);
 		//remove expired tokens from database or something
 		token.setBlacklisted(false);
-		token.setExpirationDate(getNewExpirationDate());
+		token.setExpirationDate(tokenUtils.getNewExpirationDate());
 		token.setStudentID(u.getStudentId());
 		token.setUsername(u.getUsername());
 		token.setEmployeeType(u.getEmployeeType());
@@ -141,14 +145,8 @@ public class TokenResources {
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
 		//do magical encryption stuff here probably
 		return Response.ok(token).build();
-	}
-	
-	private JsonObject mkErrorEntity(String msg){
-		JsonObjectBuilder job = Json.createObjectBuilder();
-		job.add("error", msg);
-		return job.build();
-	}
-	
+	}	
+
 	//renewToken
 	/**
 	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/renewToken Renew Token
@@ -184,66 +182,27 @@ public class TokenResources {
 	public Response renewToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
 		//check if token is still valid
 		try {
-			if(!validateToken(givenToken, signatureB64)){
+			if(!validationUtils.validateToken(givenToken, signatureB64)){
 				return Response.status(Status.UNAUTHORIZED).build();
 			}
 		} catch (NoSuchAlgorithmException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity("500: NoSuchAlgorithm")).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("500: NoSuchAlgorithm")).build();
 		} catch (InvalidKeyException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity(e.getMessage())).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		} catch (SignatureException e) {
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(mkErrorEntity(e.getMessage())).build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		}
 		//TODO: Add announcement
 		//create new token
 		UserToken token = givenToken;
 		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
-		token.setExpirationDate(getNewExpirationDate());
+		token.setExpirationDate(tokenUtils.getNewExpirationDate());
 		token = tokenBean.save(token);
 		System.out.println("Renewing: "+givenToken.getUsername());
 		return Response.ok(token).build();
-	}
-	
-	private boolean validateToken(UserToken givenToken, String signatureB64) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-		if(signatureB64 == null){ //if there's no signature, just leave
-			System.out.println("no signature");
-			return false;
-		}
-		byte[] givenTokenBytes = tokenUtils.getTokenString(givenToken).getBytes(StandardCharsets.UTF_8);
-		Signature sig = Signature.getInstance("SHA256withRSA");
-		sig.initVerify(cs.getPublicKey());
-		sig.update(givenTokenBytes);
-		if(!sig.verify(Base64.getDecoder().decode(signatureB64))){ //if key wasn't signed by us
-			System.out.println("key wasn't signed by us");
-			return false;
-		}
-		//load old token from database
-		List<UserToken> matches = tokenBean.getMatching(givenToken);
-		if(matches.size() != 1){ //if their token isn't real or is corrupted or is just somehow wrong to allow it to match with others
-			//TODO: Notify admin that a signed token has been found which is invalid!
-			System.out.println("Matches: "+matches.size());
-			return false;
-		}
-		UserToken oldToken = matches.get(0);
-		//check expiration date
-		if(oldToken.getExpirationDate() < System.currentTimeMillis()){ //if the expiration is before now, they're not authorized
-			System.out.println("Rejected for expiration date");
-			return false;
-		}
-		return true;
-	}
-	
-	/**
-	 * Return an expiration date valid for the token currently being generated
-	 * @return
-	 */
-	private Long getNewExpirationDate(){
-		Calendar cal = Calendar.getInstance();
-		cal.add(Calendar.MONTH, 1);
-		return cal.getTimeInMillis();
 	}
 
 	//tokenValid
@@ -256,14 +215,23 @@ public class TokenResources {
 	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature that needs to be verified.
 	 * 
 	 * 
-	 * @param givenToken The User Token given that you are trying to check the validity of.
+	 * @param tokenString The User Token given that you are trying to check the validity of.
 	 * @param signatureB64 The SHA256 RSA signature of the User Token that you are trying to verify.
 	 * @return Not implemented yet.
 	 */
 	@GET
 	@Path("tokenValid")
-	public Response isValidToken(@HeaderParam(UserToken.TOKEN_HEADER)String givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		return Response.status(Status.NOT_IMPLEMENTED).build();
+	public Response isValidToken(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		UserToken authToken = new Gson().fromJson(tokenString, UserToken.class);
+		try{
+			if(!validationUtils.validateToken(authToken, signatureB64))
+				return Response.status(Status.UNAUTHORIZED).build();
+		}catch(Exception e){
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
+		}
+		
+		//If we made it here, the token's okay and we should let them know
+		return Response.status(Status.OK).build();
 	}
 	
 	//invalidateToken
@@ -274,11 +242,30 @@ public class TokenResources {
 	 * @apiDescription This call allows a user to invalidate a token on another device that they are signed in on. 
 	 * @apiParam {String} Token The User Token used to authenticate.
 	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * 
+	 * @param givenToken The token to be invalidated
+	 * @param tokenString The token being used to authenticate this request. This can be the same as givenToken
+	 * @param signatureB64 The signature of the token being used to authenticate this request
 	 */
 	@POST
 	@Path("invalidateToken")
-	public Response invalidateToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		return Response.status(Status.NOT_IMPLEMENTED).build();
+	public Response invalidateToken(UserToken givenToken, @HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		UserToken authToken = new Gson().fromJson(tokenString, UserToken.class);
+		try {
+			if(!validationUtils.validateToken(authToken, signatureB64))
+				return Response.status(Status.UNAUTHORIZED).build();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
+		}
+
+		if(!authToken.getUsername().equals(givenToken.getUsername())) //If someone's trying to invalidate anther user's token
+			return Response.status(Status.FORBIDDEN).entity(apiUtils.mkErrorEntity("You are not allowed to invalidate someone else's token. An administrator will be notified")).build();
+
+		//If we made it here, the token's alright
+		UserToken token = tokenBean.getMatching(givenToken).get(0);
+		token.setBlacklisted(true);
+		tokenBean.save(token);
+		return Response.status(Status.OK).entity(token).build();
 	}
 	
 	//listTokens
@@ -320,7 +307,7 @@ public class TokenResources {
 		Gson gson = new Gson();
 		UserToken token = gson.fromJson(tokenString, UserToken.class);
 		try {
-			if(!validateToken(token, signatureB64)){
+			if(!validationUtils.validateToken(token, signatureB64)){
 				return Response.status(Status.UNAUTHORIZED).build();
 			}
 		} catch (InvalidKeyException | NoSuchAlgorithmException | SignatureException e) {
@@ -350,13 +337,21 @@ public class TokenResources {
 	 */
 	@POST
 	@Path("subscribeToInvalidation")
-	public Response subscribeToInvalidation(UserToken givenToken, @HeaderParam("invalidationEndpoint")String url, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+	public Response subscribeToInvalidation(InvalidationSubscription invalidationSubscription, @HeaderParam(UserToken.TOKEN_HEADER)String givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
 		//TODO: Add authentication and authorization checks.
-		InvalidationSubscription invalidSub = new InvalidationSubscription();
-		invalidSub.setUrl(url);
-		invalidSub.setTokenId(givenToken.getTokenId());
-		invalidations.persist(invalidSub);
-		return Response.status(Status.NOT_IMPLEMENTED).build();
+		UserToken authToken = new Gson().fromJson(givenToken, UserToken.class);
+		try{
+			if(!validationUtils.validateToken(authToken, signatureB64))
+				return Response.status(Status.UNAUTHORIZED).build();
+		}catch(Exception e){
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
+		}
+			
+		invalidationSubscription.setId(null); //just in case someone tries something funny
+		invalidationSubscription.setTokenId(authToken.getTokenId()); //set explicitly
+		invalidations.persist(invalidationSubscription); //throw it in the database
+		
+		return Response.status(Status.OK).build();
 	}
 	
 }
