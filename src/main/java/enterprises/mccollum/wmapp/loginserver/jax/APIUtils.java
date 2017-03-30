@@ -14,11 +14,11 @@ public class APIUtils {
 	 * @param msg
 	 * @return
 	 */
-	JsonObject mkErrorEntity(String msg){
+	public JsonObject mkErrorEntity(String msg){
 		return mkSingleResponseObject("error", msg);
 	}
 	
-	JsonObject mkSingleResponseObject(String responseType, String msg){
+	public JsonObject mkSingleResponseObject(String responseType, String msg){
 		JsonObjectBuilder job = Json.createObjectBuilder();
 		job.add(responseType, msg);
 		return job.build();

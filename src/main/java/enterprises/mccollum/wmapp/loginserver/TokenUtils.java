@@ -43,4 +43,12 @@ public class TokenUtils {
 		cal.add(Calendar.MONTH, 1);
 		return cal.getTimeInMillis();
 	}
+	
+	public Gson getGson(){
+		return gson;
+	}
+
+	public UserToken getToken(String tokenString) {
+		return getGson().fromJson(tokenString, UserToken.class);
+	}
 }

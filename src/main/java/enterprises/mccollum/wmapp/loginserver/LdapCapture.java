@@ -147,13 +147,17 @@ public class LdapCapture {
 		LDAPConnection conn = new LDAPConnection();
 		conn.connect(server, port); 
 		System.out.printf("User: %s\nPassword: ****\n", username); //, password);
+		@SuppressWarnings("unused") //we're about to try to assign it. Chill
 		BindResult bound = null;
-		try{
+		//try{
 			bound = conn.bind(String.format("cn=%s,%s",username,userBaseDN), password);
+		/*}catch(LDAPException e){
+			conn.close();
+			throw e;
 		}catch(Exception e){
 			conn.close();
-			throw new LDAPBindException(bound);
-		}
+			throw e;
+		}//*/
 		SearchResultEntry userEntry = getUserAttributes(conn, username);
 		return userFromEntry(conn, userEntry);
 	}

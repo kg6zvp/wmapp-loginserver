@@ -40,6 +40,8 @@ public class TestJax {
 	 */
 	public Response getToken(JsonObject obj) {
 		String username = obj.getString("username");
+		if(username.contains("@"))
+			username = username.split("@")[0];
 		String password = obj.getString("password");
 
 		String deviceName = null;

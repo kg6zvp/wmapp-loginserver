@@ -14,10 +14,12 @@ import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.json.JsonObject;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -25,7 +27,6 @@ import javax.ws.rs.core.Response.Status;
 
 import com.google.gson.Gson;
 import com.unboundid.ldap.sdk.LDAPBindException;
-import com.unboundid.ldap.sdk.LDAPException;
 
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
@@ -80,19 +81,24 @@ public class TokenResources {
 	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/getToken Get Token 
 	 * @apiName PostGetToken
 	 * @apiGroup Token
-	 * @apiDescription This call will retrieve a User Token to use for all microservices.
-	 * @apiParam {String} Token The User Token used to authenticate.
-	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiDescription This call will retrieve a User Token to use for all microservices
+	 *
+	 * @apiParam (credentials) {String} username Username of the user to login
+	 * @apiParam (credentials) {String} [devicename] The name of the device being logged in from. This is used to help the user identify which devices they're logged in on. If unspecified, a random UUID will be generated for this value
+	 * @apiParam (credentials) {String} password The password of the user account to be logged into
+	 *
 	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
 	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR There was an error with the LDAP query.
-	 * @apiSuccess (Success Response Header) {String} TokenSignature	The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 *
+	 * @apiSuccess (Success Response Header) {String} TokenSignature	The base64 encoded signature of the user's token (<a href="http://lmgtfy.com?iie=1&q=what+is+base64+encoding" target="_blank">What is base64 encoding</a>)
 	 * @apiSuccess {long} tokenId	The UUID of the token generated
 	 * @apiSuccess {long} studentId	The student ID of the user.
 	 * @apiSuccess {String} username	The username of the user.
 	 * @apiSuccess {String} devicename	The name of the device being used.
-	 * @apiSuccess {long} expirationDate	The expiration date of the token in milliseconds EPOCH time.
-	 * @apiSuccess {boolean} blacklisted	The status of the token. Will be true if invalidateToken has been called on this token.
-	 * @apiSuccess {String} employeeType	The type of the user. Can be student, facstaff, alum, or community.
+	 * @apiSuccess {long} expirationDate	The expiration date/time of the token in milliseconds using EPOCH time (<a href="http://lmgtfy.com/?iie=1&q=what+is+epoch+time" target="_blank">What is epoch time</a>)
+	 * @apiSuccess {boolean} blacklisted	The token's revocation status (will be true if token has been invalidated or revoked)
+	 * @apiSuccess {String} employeeType	The type of the user (most commonly: student, facstaff, alum, or community)
+	 *
 	 * @apiExample Success Response Header Example
 	 * TokenSignature: NU2edZPpt1RjkvJjNM2t1l/fP0p8in+6mqk7Nh6Govxo6EZaei4B16iHMLDY0PwB/FvAvZwQEuT25l6CQSLTC4sC8KBWdIDGTV/k698ZEOqoytibRU05AKrGmcSZsdfqdhZAS9cp1apGTQXrijP/0BicpjIM+sVB71sN/mMecsVSG1qHJxpiothNgcuJCG0uBgMwLKpuhhZ67s6kDbr7pyH49bal4ooBfbmS50PcaN5IhFaD7YtOb1FRD6dK0DgYwcjOulfQ4I3HXgnQ1i9IWXjQbFKSFNlpg414yW9tA7xgcL3bvIiRSpruW6J2LaOKQNv9qQO5wXbcQ3BrWXPc7jbljrH8296kBfhzPmAtH2xDg4uzI/JRby7NS5ftDGOouP6ptBp/Do4pMQviPDX46dcYzD5c=
 	 * @apiExample Success Response Body Example
@@ -112,6 +118,8 @@ public class TokenResources {
 	public Response getToken(JsonObject obj){
 	//public Response getToken(@FormParam("username")String username, @FormParam("password")String password, @FormParam("devicename")String deviceName){
 		String username = obj.getString("username");
+		if(username.contains("@"))
+			username = username.split("@")[0];
 		if(username.equals(TestUser.USERNAME))
 			return testJax.getToken(obj);
 		String password = obj.getString("password");
@@ -121,17 +129,17 @@ public class TokenResources {
 		}else{
 			deviceName = UUID.randomUUID().toString(); //generate random string from UUID
 		}
-		System.out.println("username: "+username);
 		DomainUser u = null;
 		try {
 			u = ldapManager.login(username, password);
 		} catch (LDAPBindException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.printf("Login failure: %s\n", username);
 			return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("Incorrect username or password")).build();
-		} catch(LDAPException e){
+		} catch(Exception e){
 			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("LDAP error")).build(); //return useful error to client for debugging porpoises
+			System.out.printf("Error accessing LDAP: %s\n", username);
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("LDAP error"+e.getMessage())).build(); //return useful error to client for debugging porpoises
 		}
 		UserToken token = new UserToken();
 		token.setDeviceName(deviceName);
@@ -144,17 +152,18 @@ public class TokenResources {
 		
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
 		//do magical encryption stuff here probably
+		System.out.printf("Login Success: %s\n", username);
 		return Response.ok(token).build();
-	}	
+	}
 
 	//renewToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/renewToken Renew Token
+	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/renewToken Renew Token
 	 * @apiName PostRenewToken
 	 * @apiGroup Token
 	 * @apiDescription This call allows a user to update a User Token with a new expiration date. 
-	 * @apiParam {String} Token The User Token used to authenticate.
-	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiHeader {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiHeader {json} Token The User Token used to authenticate.
 	 * @apiError (Response Error) {500} INTERNAL_SERVER_ERROR Can be No Such Algorithm, Invalid Signature, or Invalid Public Key.
 	 * @apiError (Response Error) {401} UNAUTHORIZED The username or password was incorrect.
 	 * @apiSuccess {long} tokenId	The UUID of the token generated
@@ -177,12 +186,12 @@ public class TokenResources {
   "blacklisted": false
 }
 	 */
-	@POST
+	@GET
 	@Path("renewToken")
-	public Response renewToken(UserToken givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+	public Response renewToken(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
 		//check if token is still valid
 		try {
-			if(!validationUtils.validateToken(givenToken, signatureB64)){
+			if(!validationUtils.validateToken(tokenString, signatureB64)){
 				return Response.status(Status.UNAUTHORIZED).build();
 			}
 		} catch (NoSuchAlgorithmException e) {
@@ -196,12 +205,11 @@ public class TokenResources {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		}
 		//TODO: Add announcement
-		//create new token
-		UserToken token = givenToken;
+		UserToken token = tokenUtils.getGson().fromJson(tokenString, UserToken.class); //instantiate token
 		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
 		token.setExpirationDate(tokenUtils.getNewExpirationDate());
 		token = tokenBean.save(token);
-		System.out.println("Renewing: "+givenToken.getUsername());
+		System.out.println("Renewing: "+token.getUsername());
 		return Response.ok(token).build();
 	}
 
@@ -211,8 +219,8 @@ public class TokenResources {
 	 * @apiName GetTokenValid
 	 * @apiGroup Token
 	 * @apiDescription This call is for checking if a User Token is valid. 
-	 * @apiParam {String} Token The token that needs to be checked.
-	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature that needs to be verified.
+	 * @apiHeader {String} TokenSignature The base64 encoded signature of the token
+	 * @apiHeader {json} Token The token that needs to be checked.
 	 * 
 	 * 
 	 * @param tokenString The User Token given that you are trying to check the validity of.
@@ -236,36 +244,42 @@ public class TokenResources {
 	
 	//invalidateToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/invalidateToken Invalidate Token
-	 * @apiName PostInvalidateToken
+	 * @api {delete} https://auth.wmapp.mccollum.enterprises/api/token/invalidateToken/{tokenId} Invalidate Token
+	 * @apiName InvalidateToken
 	 * @apiGroup Token
+	 * @apiParam tokenID {long} The ID of the token to be deleted
 	 * @apiDescription This call allows a user to invalidate a token on another device that they are signed in on. 
-	 * @apiParam {String} Token The User Token used to authenticate.
-	 * @apiParam {String} TokenSignature The base64 encoded SHA256 RSA signature of the token that needs to be verified.
+	 * @apiHeader Token The User Token used to authenticate this request
+	 * @apiHeader TokenSignature The base64 encoded signature of the token used to authenticate
 	 * 
-	 * @param givenToken The token to be invalidated
+	 * @param tokenId The ID of the token to be invalidated
 	 * @param tokenString The token being used to authenticate this request. This can be the same as givenToken
 	 * @param signatureB64 The signature of the token being used to authenticate this request
 	 */
-	@POST
-	@Path("invalidateToken")
-	public Response invalidateToken(UserToken givenToken, @HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		UserToken authToken = new Gson().fromJson(tokenString, UserToken.class);
+	@DELETE
+	@Path("invalidateToken/{tokenId}")
+	public Response invalidateToken(@PathParam("tokenId")Long tokenId, @HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
+		UserToken authToken = tokenUtils.getToken(tokenString); //Token used to authenticate
 		try {
 			if(!validationUtils.validateToken(authToken, signatureB64))
-				return Response.status(Status.UNAUTHORIZED).build();
+				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		}
+		UserToken givenToken = tokenBean.get(tokenId); //token specified for invalidation
 
-		if(!authToken.getUsername().equals(givenToken.getUsername())) //If someone's trying to invalidate anther user's token
-			return Response.status(Status.FORBIDDEN).entity(apiUtils.mkErrorEntity("You are not allowed to invalidate someone else's token. An administrator will be notified")).build();
+		if(givenToken == null) //if the token specified for invalidation doesn't exist
+			return Response.status(Status.GONE).entity(apiUtils.mkErrorEntity("The specified token cannot be deleted because it does not exist")).build();
+		
+		if(!authToken.getUsername().equals(givenToken.getUsername())){ //If someone's trying to invalidate anther user's token
+			return Response.status(Status.FORBIDDEN).entity(apiUtils.mkErrorEntity(String.format("You are not allowed to invalidate someone else's token. An administrator will be notified %s != %s", authToken.getUsername(), givenToken.getUsername()))).build();
+			//TODO: notify admin
+		}
 
 		//If we made it here, the token's alright
-		UserToken token = tokenBean.getMatching(givenToken).get(0);
-		token.setBlacklisted(true);
-		tokenBean.save(token);
-		return Response.status(Status.OK).entity(token).build();
+		givenToken.setBlacklisted(true);
+		tokenBean.save(givenToken);
+		return Response.status(Status.OK).entity(givenToken).build();
 	}
 	
 	//listTokens
