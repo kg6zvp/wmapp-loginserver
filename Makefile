@@ -10,6 +10,7 @@ localsvr: pom.xml
 
 server: pom.xml
 	apidoc -i ./ -o src/main/webapp/
+	sed -i 's/\/\/ Setup jQuery Ajax/apiProject.url = window.location.href;/' 'src/main/webapp/main.js'
 	$(MAVEN) package
 
 clean: pom.xml

@@ -78,7 +78,7 @@ public class TokenResources {
 	
 	//getToken
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/getToken Get Token 
+	 * @api {post} api/token/getToken Get Token 
 	 * @apiName PostGetToken
 	 * @apiGroup Token
 	 * @apiDescription This call will retrieve a User Token to use for all microservices
@@ -158,7 +158,7 @@ public class TokenResources {
 
 	//renewToken
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/renewToken Renew Token
+	 * @api {get} api/token/renewToken Renew Token
 	 * @apiName PostRenewToken
 	 * @apiGroup Token
 	 * @apiDescription This call allows a user to update a User Token with a new expiration date. 
@@ -215,7 +215,7 @@ public class TokenResources {
 
 	//tokenValid
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/tokenValid Check Valid Token
+	 * @api {get} api/token/tokenValid Check Valid Token
 	 * @apiName GetTokenValid
 	 * @apiGroup Token
 	 * @apiDescription This call is for checking if a User Token is valid. 
@@ -244,7 +244,7 @@ public class TokenResources {
 	
 	//invalidateToken
 	/**
-	 * @api {delete} https://auth.wmapp.mccollum.enterprises/api/token/invalidateToken/{tokenId} Invalidate Token
+	 * @api {delete} api/token/invalidateToken/{tokenId} Invalidate Token
 	 * @apiName InvalidateToken
 	 * @apiGroup Token
 	 * @apiParam tokenID {long} The ID of the token to be deleted
@@ -284,7 +284,7 @@ public class TokenResources {
 	
 	//listTokens
 	/**
-	 * @api {get} https://auth.wmapp.mccollum.enterprises/api/token/listTokens Get Token List
+	 * @api {get} api/token/listTokens Get Token List
 	 * @apiName GetTokenList
 	 * @apiGroup Token
 	 * @apiDescription This call is for retrieving all the tokens associated with the user account. 
@@ -342,7 +342,7 @@ public class TokenResources {
 	
 	//subscribeToInvalidation
 	/**
-	 * @api {post} https://auth.wmapp.mccollum.enterprises/api/token/subscribeToInvalidation Subscribe To Token Invalidation
+	 * @api {post} api/token/subscribeToInvalidation Subscribe To Token Invalidation
 	 * @apiName PostInvalidTokenSubscription
 	 * @apiGroup Token
 	 * @apiDescription This call allows a microservice to subscribe to updates from the central server for token invalidations. 
