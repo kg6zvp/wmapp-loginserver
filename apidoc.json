@@ -1,6 +1,6 @@
 {
 	"name": "API",
 	"version": "0.1.0",
-	"description": "Unofficial Westmont App API",
+	"description": "Unofficial Westmont Authorization API",
 	"title": "Auth API"
 }
