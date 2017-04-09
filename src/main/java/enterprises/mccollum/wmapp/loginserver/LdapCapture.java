@@ -29,7 +29,7 @@ import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
  * About UnboundID: https://www.ldap.com/unboundid-ldap-sdk-for-java
  * Using UnboundID: https://docs.ldap.com/ldap-sdk/docs/getting-started/connections.html
  * 
- * Things to do: Implement a connection pool, 
+ * TODO: Implement a connection pool, 
  */
 @Singleton
 @Startup
@@ -90,7 +90,10 @@ public class LdapCapture {
 	 */
 	private DomainUser readUserFromEntry(LDAPConnection conn, SearchResultEntry userEntry) throws LDAPSearchException{
 		DomainUser u = new DomainUser();
-		u.setStudentId(userEntry.getAttributeValueAsLong("uidNumber")); // Use datatelID if this breaks
+		Long studentID = userEntry.getAttributeValueAsLong("uidNumber"); // Use datatelID if this breaks
+		if(studentID == null)
+			userEntry.getAttributeValueAsLong("datatelID");
+		u.setStudentId(studentID);
 		u.setFirstName(userEntry.getAttributeValue("givenName"));
 		u.setLastName(userEntry.getAttributeValue("sn")); 
 		u.setFullName(userEntry.getAttributeValue("displayName"));
