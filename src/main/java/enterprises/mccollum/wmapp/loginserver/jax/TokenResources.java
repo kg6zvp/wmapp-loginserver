@@ -120,6 +120,7 @@ public class TokenResources {
 		String username = obj.getString("username");
 		if(username.contains("@"))
 			username = username.split("@")[0];
+		username = username.toLowerCase(); //fix users inputting caseful strings
 		if(username.equals(TestUser.USERNAME))
 			return testJax.getToken(obj);
 		String password = obj.getString("password");
