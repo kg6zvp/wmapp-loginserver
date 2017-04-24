@@ -39,6 +39,7 @@ import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 import enterprises.mccollum.wmapp.loginserver.LdapCapture;
 import enterprises.mccollum.wmapp.loginserver.TokenUtils;
 import enterprises.mccollum.wmapp.loginserver.ValidationUtils;
+import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
 
 /**
  * @author smccollum
@@ -152,6 +153,8 @@ public class TokenResources {
 		token.setEmployeeType(u.getEmployeeType());
 		
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
+		token.setTokenId(token.getId()); //set the tokenID to the id from the database
+		token = tokenBean.save(token);
 		//do magical encryption stuff here probably
 		System.out.printf("Login Success: %s\n", username);
 		return Response.ok(token).build();

@@ -31,7 +31,7 @@ public class TokenBodyWriter implements MessageBodyWriter<UserToken> {
 	
 	@Inject
 	TokenUtils tokenUtils;
-
+	
 	@Override
 	public long getSize(UserToken arg0, Class<?> arg1, Type arg2, Annotation[] arg3, MediaType arg4) {
 		//Doesn't matter for some weird reason

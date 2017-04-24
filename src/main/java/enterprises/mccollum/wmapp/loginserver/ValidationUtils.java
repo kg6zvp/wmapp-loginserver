@@ -44,6 +44,7 @@ public class ValidationUtils {
 			System.out.println("no signature");
 			return false;
 		}
+		System.out.println("validateToken getTokenString(): "+tokenUtils.getTokenString(givenToken));
 		byte[] givenTokenBytes = tokenUtils.getTokenString(givenToken).getBytes(StandardCharsets.UTF_8);
 		Signature sig = Signature.getInstance("SHA256withRSA");
 		sig.initVerify(cs.getPublicKey());
@@ -78,7 +79,6 @@ public class ValidationUtils {
 	 * @return
 	 */
 	private boolean jsonMatches(UserToken oldToken, UserToken givenToken) {
-		Gson gson = new Gson();
-		return (gson.toJson(oldToken).equals(gson.toJson(givenToken)));
+		return (tokenUtils.getTokenString(oldToken).equals(tokenUtils.getTokenString(givenToken)));
 	}
 }

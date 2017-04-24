@@ -67,6 +67,8 @@ public class TestJax {
 		token.setEmployeeType(u.getEmployeeType());
 		
 		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
+		token.setTokenId(token.getId()); //set the tokenID to the id from the database
+		token = tokenBean.save(token);
 		//do magical encryption stuff here probably
 		return Response.ok(token).build();
 	}
