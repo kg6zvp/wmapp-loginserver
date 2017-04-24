@@ -209,11 +209,12 @@ public class TokenResources {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		}
 		//TODO: Add announcement
-		UserToken token = tokenUtils.getGson().fromJson(tokenString, UserToken.class); //instantiate token
+		UserToken token = tokenUtils.getToken(tokenString);
+		token = tokenBean.getByTokenId(token.getTokenId());
 		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
 		token.setExpirationDate(tokenUtils.getNewExpirationDate());
 		token = tokenBean.save(token);
-		System.out.println("Renewing: "+token.getUsername());
+		System.out.println("Renewing: "+token.getUsername()+", ID="+token.getId()+", tID="+token.getTokenId());
 		return Response.ok(token).build();
 	}
 
@@ -270,7 +271,7 @@ public class TokenResources {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
 		}
-		UserToken givenToken = tokenBean.get(tokenId); //token specified for invalidation
+		UserToken givenToken = tokenBean.getByTokenId(tokenId); //token specified for invalidation
 
 		if(givenToken == null) //if the token specified for invalidation doesn't exist
 			return Response.status(Status.GONE).entity(apiUtils.mkErrorEntity("The specified token cannot be deleted because it does not exist")).build();
