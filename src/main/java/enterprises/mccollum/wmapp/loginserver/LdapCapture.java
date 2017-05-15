@@ -1,6 +1,9 @@
 package enterprises.mccollum.wmapp.loginserver;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
@@ -92,7 +95,8 @@ public class LdapCapture {
 		DomainUser u = new DomainUser();
 		Long studentID = userEntry.getAttributeValueAsLong("uidNumber"); // Use datatelID if this breaks
 		if(studentID == null)
-			userEntry.getAttributeValueAsLong("datatelID");
+			studentID = userEntry.getAttributeValueAsLong("datatelID");
+		Logger.getLogger("LDAPCapture").log(Level.INFO, String.format("Student ID for user %s: %d", userEntry.getAttributeValue("cn"), studentID));
 		u.setStudentId(studentID);
 		u.setFirstName(userEntry.getAttributeValue("givenName"));
 		u.setLastName(userEntry.getAttributeValue("sn")); 
