@@ -21,7 +21,13 @@ public class KeyResources {
 	 * @api {get} api/key/getPubKey Request Public Key
 	 * @apiName GetPubKey
 	 * @apiGroup Key 
-	 * @apiDescription This method is for requesting the public key which is used to verify the signature on a signed user token.
+	 * @apiDescription This method is for requesting the public key which is used to verify the signature on a signed user token. The public key is a 4096-bit RSA key.
+	 *
+	 * @apiExample {String} Usage
+	 * The key is used by servers employing this login system in the following way:
+	 * (Note: The key is a 4096-bit RSA key)
+	 * 1.) Take a SHA-256 hash of the token presented by the client
+	 * 2.) Verify that the signature presented by the client (which is a signed version of the SHA-256 hash of the token encoded in UTF-8 and containing no leading or trailing spaces or zero-length characters) was signed by the private key using the public key given by this API endpoint
 	 * @apiExample {String} Success Response
 	 * 				-----BEGIN PUBLIC KEY-----
 	 * 				MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAvTdcdxIfo7iO0viB5TUl 
