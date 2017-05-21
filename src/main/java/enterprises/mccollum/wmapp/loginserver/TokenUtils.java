@@ -4,8 +4,8 @@ import java.util.Calendar;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
-import javax.ejb.Singleton;
-import javax.ejb.Startup;
+import javax.ejb.Local;
+import javax.ejb.Stateless;
 import javax.inject.Inject;
 
 import com.google.gson.Gson;
@@ -18,17 +18,26 @@ import enterprises.mccollum.wmapp.ssauthclient.SSAuthClient;
  * @author smccollum
  *
  */
-@Singleton
-@Startup
+@Local
+@Stateless
 public class TokenUtils {
 	Gson gson;
 	
 	@Inject
 	SSAuthClient ssAuthClient;
 	
+	long timeDiff;	
+	
+	long genTimeDiff(){
+		Calendar cal = Calendar.getInstance();
+		cal.add(Calendar.MONTH, 1);
+		return (cal.getTimeInMillis()-System.currentTimeMillis());
+	}
+	
 	@PostConstruct
 	public void init(){
 		gson = new Gson();
+		timeDiff = genTimeDiff();
 	}
 
 	public String getTokenArray(List<UserToken> tokens){
@@ -43,10 +52,11 @@ public class TokenUtils {
 	 * Return an expiration date valid for the token currently being generated
 	 * @return
 	 */
-	public Long getNewExpirationDate(){
-		Calendar cal = Calendar.getInstance();
+	public long getNewExpirationDate(){
+		/*Calendar cal = Calendar.getInstance();
 		cal.add(Calendar.MONTH, 1);
-		return cal.getTimeInMillis();
+		return cal.getTimeInMillis();//*/
+		return (System.currentTimeMillis()+timeDiff);
 	}
 	
 	public Gson getGson(){

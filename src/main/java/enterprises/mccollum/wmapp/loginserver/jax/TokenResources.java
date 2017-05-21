@@ -5,6 +5,7 @@ package enterprises.mccollum.wmapp.loginserver.jax;
 
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
 import java.security.SignatureException;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,9 +22,11 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 
 import com.google.gson.Gson;
 import com.unboundid.ldap.sdk.LDAPBindException;
@@ -40,6 +43,7 @@ import enterprises.mccollum.wmapp.loginserver.LdapCapture;
 import enterprises.mccollum.wmapp.loginserver.TokenUtils;
 import enterprises.mccollum.wmapp.loginserver.ValidationUtils;
 import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
+import enterprises.mccollum.wmapp.ssauthclient.WMPrincipal;
 
 /**
  * @author smccollum
@@ -192,32 +196,18 @@ public class TokenResources {
 	 */
 	@GET
 	@Path("renewToken")
-	public Response renewToken(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		//check if token is still valid
-		try {
-			if(!validationUtils.validateToken(tokenString, signatureB64)){
-				return Response.status(Status.UNAUTHORIZED).build();
-			}
-		} catch (NoSuchAlgorithmException e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("500: NoSuchAlgorithm")).build();
-		} catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
-		} catch (SignatureException e) {
-			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
+	public Response renewToken(@Context SecurityContext seCtx){
+		Principal principal = seCtx.getUserPrincipal();
+		if(!(principal instanceof WMPrincipal)){
+			return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("Not authenticated")).build();
 		}
-		//TODO: Add announcement
-		UserToken token = tokenUtils.getToken(tokenString);
-		token = tokenBean.getByTokenId(token.getTokenId());
-		//TODO: would be nice to check LDAP database for new stuff instead of reusing data
+		UserToken token = tokenBean.getByTokenId(((WMPrincipal)principal).getToken().getTokenId());
 		token.setExpirationDate(tokenUtils.getNewExpirationDate());
 		token = tokenBean.save(token);
 		System.out.println("Renewing: "+token.getUsername()+", ID="+token.getId()+", tID="+token.getTokenId());
 		return Response.ok(token).build();
-	}
-
+	}//*/
+	
 	//tokenValid
 	/**
 	 * @api {get} api/token/tokenValid Check Valid Token

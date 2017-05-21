@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.annotation.PostConstruct;
+import javax.ejb.Lock;
+import javax.ejb.LockType;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.inject.Inject;
@@ -16,7 +17,6 @@ import com.unboundid.ldap.sdk.LDAPSearchException;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import com.unboundid.util.Debug;
 
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
@@ -37,11 +37,10 @@ import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 @Singleton
 @Startup
 public class LdapCapture {
-	static String server = "pdc.westmont.edu"; // Westmont LDAP Server IP address
-	static int port = 389;
-	static String userBaseDN = "CN=Users,DC=campus,DC=westmont,DC=edu";
-	static String groupBaseDN = "CN=Groups,DC=campus,DC=westmont,DC=edu";
-	private LDAPConnection connection;
+	public static String server = "pdc.westmont.edu"; // Westmont LDAP Server IP address
+	public static int port = 389;
+	public static String userBaseDN = "CN=Users,DC=campus,DC=westmont,DC=edu";
+	public static String groupBaseDN = "CN=Groups,DC=campus,DC=westmont,DC=edu";
 
 	@Inject
 	DomainUserBean dUsers;
@@ -52,19 +51,6 @@ public class LdapCapture {
 	@Inject
 	UserTokenBean tokens;
 	
-	@PostConstruct
-	public void init(){
-		Debug.setEnabled(false);
-		//Debug.getLogger().setLevel(Level.FINEST);
-		//Debug.setIncludeStackTrace(true);
-		connection = new LDAPConnection();
-		try{
-			connection.connect(server, port); 
-		}catch(Exception e){
-			System.out.println("You broke everything!!!");
-		}
-	}
-
 	private UserGroup readGroupFromEntry(SearchResultEntry entry) throws LDAPSearchException{
 		UserGroup g = new UserGroup();
 		//create instance of UserGroup from appropriate LDAP entry
@@ -149,6 +135,7 @@ public class LdapCapture {
 	}
 
 	// Logs in and creates basic connection
+	@Lock(LockType.READ)
 	public DomainUser login(String username, String password) throws LDAPException, LDAPBindException {
 		// TODO: allow multiple logins gracefully for the same user on different devices
 		LDAPConnection conn = new LDAPConnection();
@@ -199,11 +186,5 @@ public class LdapCapture {
 		System.out.println("No results!");
 		return null;
 	}
-	
-	// Closes the Connection
-	public void closeConnection(){
-		connection.close();
-	}
-	
 }
 	

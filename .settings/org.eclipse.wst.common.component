@@ -3,6 +3,9 @@
         <wb-resource deploy-path="/" source-path="/target/m2e-wtp/web-resources"/>
         <wb-resource deploy-path="/" source-path="/src/main/webapp" tag="defaultRootSource"/>
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/src/main/java"/>
+        <dependent-module archiveName="ssauthclient-1.0.3.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/ssauthclient/ssauthclient">
+            <dependency-type>uses</dependency-type>
+        </dependent-module>
         <dependent-module archiveName="genericentityejb-1.0.5.jar" deploy-path="/WEB-INF/lib" handle="module:/resource/genericentityejb/genericentityejb">
             <dependency-type>uses</dependency-type>
         </dependent-module>
