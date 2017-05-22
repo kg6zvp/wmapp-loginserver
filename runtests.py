@@ -18,6 +18,7 @@ listUrl = tokenBaseUrl+"/listTokens"
 renewUrl = tokenBaseUrl+"/renewToken"
 invalidationSubscriptionUrl = tokenBaseUrl+"/subscribeToInvalidation"
 tokenValidUrl = tokenBaseUrl+"/tokenValid"
+userInfoUrl=authBaseUrl+"/user"
 
 tokenSignature=" "
 tokenString=" "
@@ -63,7 +64,11 @@ def isValidToken(token, sigb64):
     hrs['TokenSignature'] = sigb64
     return requests.get(url=tokenValidUrl, headers=hrs)
 
-
+def getUserInfo(token, sigb64):
+    hrs={'Content-Type': 'application/json'}
+    hrs['Token'] = token
+    hrs['TokenSignature'] = sigb64
+    return requests.get(url=userInfoUrl, headers=hrs)
 
 
 def checkCode(httpResponse, expectedResponse, failureMessage):
@@ -103,6 +108,12 @@ print "Testing token renewal..."
 validRenewal = renewToken(validCreds.content, validCreds.headers['TokenSignature'])
 checkCode(validRenewal, 200, "renew token")
 print "\tRenewing token successful"
+
+print "Testing get user info..."
+userinfo = getUserInfo(validRenewal.content, validRenewal.headers['TokenSignature'])
+checkCode(userinfo, 200, "get user info")
+print userinfo.content
+print "\tRetrieving user info successful"
 
 print "Testing token invalidation..."
 validInvalidation = invalidateToken(json.loads(validRenewal.content), validRenewal.content, validRenewal.headers['TokenSignature'])

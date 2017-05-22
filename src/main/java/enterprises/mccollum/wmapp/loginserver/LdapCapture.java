@@ -54,6 +54,12 @@ public class LdapCapture {
 	private UserGroup readGroupFromEntry(SearchResultEntry entry) throws LDAPSearchException{
 		UserGroup g = new UserGroup();
 		//create instance of UserGroup from appropriate LDAP entry
+		if(entry == null) //not sure what sometimes happens here
+			return null;
+		if(!entry.hasAttribute("distinguishedName")){
+			Logger.getLogger("LDAPCapture").log(Level.WARNING, String.format("Couldn't get group info for group %s", entry.toLDIFString()));
+			return null;
+		}
 		g.setLdapName(entry.getAttributeValue("distinguishedName"));
 		g.setName(entry.getAttributeValue("cn"));
 		return g;
@@ -96,28 +102,37 @@ public class LdapCapture {
 	}
 	
 	//TODO: re-write so that database key is not assumed to come from AD DC
-	private DomainUser userFromEntry(LDAPConnection conn, SearchResultEntry userEntry) throws LDAPSearchException, LDAPException, RuntimeException{
+	@Lock(LockType.READ)
+	public DomainUser userFromEntry(LDAPConnection conn, SearchResultEntry userEntry) throws LDAPSearchException, LDAPException, RuntimeException{
 		//check if all groups listed by user exist and if not, create them, then add user to them
 		DomainUser u = readUserFromEntry(conn, userEntry);
+		if(u.getStudentId() == null){
+			Logger.getLogger("LDAPCapture").log(Level.WARNING, String.format("Couldn't find user id for user %s", u.getUsername()));
+			return null;
+		}
 		DomainUser tempUser = dUsers.get(u.getStudentId());
 		if(tempUser == null){ //if user isn't in the database...
 			u = dUsers.persist(u); //save/add them to it
 		}else{
 			u = dUsers.save(tempUser);
 		}
-		for(String groupName : userEntry.getAttributeValues("memberOf")){
-			String gCN = getCNFromMemberOf(groupName);
-			SearchResultEntry groupEntry = getGroupAttributes(conn, gCN);
-			UserGroup g = readGroupFromEntry(groupEntry);
-			UserGroup tempGroup = uGroups.findGroup(g.getName());
-			if(tempGroup != null){ //if the group is already in the database, get it
-				g = tempGroup;
-			}else{ //if the group doesn't exist, create it
-				g = uGroups.persist(g);
+		if(userEntry.hasAttribute("memberOf")){
+			for(String groupName : userEntry.getAttributeValues("memberOf")){
+				String gCN = getCNFromMemberOf(groupName);
+				SearchResultEntry groupEntry = getGroupAttributes(conn, gCN);
+				UserGroup g = readGroupFromEntry(groupEntry);
+				if(g != null){
+					UserGroup tempGroup = uGroups.findGroup(g.getName());
+					if(tempGroup != null){ //if the group is already in the database, get it
+						g = tempGroup;
+					}else{ //if the group doesn't exist, create it
+						g = uGroups.persist(g);
+					}
+					g.addUser(u);
+					uGroups.save(g); //save group entry after adding user to group
+					u = dUsers.save(u); //save user entry after adding group to user's groups list
+				}
 			}
-			g.addUser(u);
-			uGroups.save(g); //save group entry after adding user to group
-			u = dUsers.save(u); //save user entry after adding group to user's groups list
 		}
 		return u; //add users to database and return the database-connected object instance
 	}
