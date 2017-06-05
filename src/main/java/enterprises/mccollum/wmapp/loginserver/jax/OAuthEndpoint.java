@@ -20,7 +20,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
 import enterprises.mccollum.sauth.TempKeyBean;
-import enterprises.mccollum.sauth.TempUserInfoKeyEntity;
+import enterprises.mccollum.sauth.TempKey;
 import enterprises.mccollum.ssauthclient.URLContextUtils;
 import enterprises.mccollum.ssauthclient.URLStateUtils;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
@@ -193,7 +193,7 @@ public class OAuthEndpoint {
 	}
 	
 	private String createTempKey(WMPrincipal wmp) {
-		TempUserInfoKeyEntity tempKey = new TempUserInfoKeyEntity();
+		TempKey tempKey = new TempKey();
 		tempKey.setToken(wmp.getToken());
 		tempKey.setExpirationDate(System.currentTimeMillis()+600000); //allow up to 10 minutes for retrieving the key
 		tempKey.generateKey();
@@ -225,7 +225,7 @@ public class OAuthEndpoint {
 		if(code == null || code.length() < 1){
 			return Response.status(Status.BAD_REQUEST).entity(apiUtils.mkErrorEntity("Missing parameter: code")).build();
 		}
-		TempUserInfoKeyEntity tokenInfo = authCodeStore.get(code);
+		TempKey tokenInfo = authCodeStore.getByKey(code);
 		if(tokenInfo == null){
 			authCodeStore.expireOld();
 			return Response.status(Status.NOT_FOUND).entity(apiUtils.mkErrorEntity("Token not found")).build();

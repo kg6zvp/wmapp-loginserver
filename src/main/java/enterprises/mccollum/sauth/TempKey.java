@@ -3,6 +3,8 @@ package enterprises.mccollum.sauth;
 import java.util.UUID;
 
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -11,24 +13,33 @@ import enterprises.mccollum.wmapp.authobjects.UserToken;
 
 @Entity
 @XmlRootElement
-public class TempUserInfoKeyEntity {
+public class TempKey {
 	@Id
-	String key;
+	@GeneratedValue(strategy=GenerationType.AUTO)
+	Long id;
+	
+	String keyStr;
 	Long expirationDate;
 	
 	@OneToOne
 	UserToken token;
 	
-	public TempUserInfoKeyEntity(){}
+	public TempKey(){}
 
+	public Long getId() {
+		return id;
+	}
+	public void setId(Long id) {
+		this.id = id;
+	}
 	public void generateKey(){
 		setKey(token.getUsername()+UUID.randomUUID().toString());
 	}
 	public String getKey() {
-		return key;
+		return keyStr;
 	}
 	public void setKey(String key) {
-		this.key = key;
+		this.keyStr = key;
 	}
 	public Long getExpirationDate() {
 		return expirationDate;

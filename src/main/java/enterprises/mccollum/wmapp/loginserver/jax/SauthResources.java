@@ -11,7 +11,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import enterprises.mccollum.sauth.TempKeyBean;
-import enterprises.mccollum.sauth.TempUserInfoKeyEntity;
+import enterprises.mccollum.sauth.TempKey;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
 
@@ -27,7 +27,7 @@ public class SauthResources {
 	@GET
 	@Path("/{key}")
 	public Response getUserToken(@PathParam("key") String key){
-		TempUserInfoKeyEntity tokenInfo = tempKeyBean.get(key);
+		TempKey tokenInfo = tempKeyBean.getByKey(key);
 		if(tokenInfo == null){
 			tempKeyBean.expireOld();
 			return Response.status(Status.NOT_FOUND).entity(apiUtils.mkErrorEntity("Key not found")).build();
