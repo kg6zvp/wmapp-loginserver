@@ -2,6 +2,8 @@
 
 MAVEN = mvn
 
+docsPath=src/main/webapp/docs
+
 default: server
 
 localsvr: pom.xml
@@ -9,12 +11,15 @@ localsvr: pom.xml
 	echo "//TODO: Checkout original version from git"
 
 server: pom.xml
-	apidoc -i ./ -o src/main/webapp/
-	sed -i 's/\/\/ Setup jQuery Ajax/apiProject.url = window.location.href;/' 'src/main/webapp/main.js'
+	mkdir -p $(docsPath)
+	apidoc -i ./ -o $(docsPath)/
+	sed -i "/\/\/ Setup jQuery Ajax/a var tUrl = window.location.href;\n    apiProject.url = tUrl.substring(0, tUrl.substring(0, tUrl.length-3).lastIndexOf('\/'));\n    console.log(\"Url: \"+apiProject.url);" 'src/main/webapp/docs/main.js'
 	$(MAVEN) package
 
 clean: pom.xml
-	mv src/main/webapp/WEB-INF .
-	rm -rf src/main/webapp/*
-	mv WEB-INF src/main/webapp/
+	rm -rf $(docsPath)
 	$(MAVEN) clean
+
+
+#mv src/main/webapp/WEB-INF .
+#mv WEB-INF src/main/webapp/

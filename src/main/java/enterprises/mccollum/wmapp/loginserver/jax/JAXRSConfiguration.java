@@ -1,4 +1,4 @@
-package com.airhacks;
+package enterprises.mccollum.wmapp.loginserver.jax;
 
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;

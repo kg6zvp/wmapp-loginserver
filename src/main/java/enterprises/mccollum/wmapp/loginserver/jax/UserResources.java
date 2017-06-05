@@ -18,7 +18,6 @@ import javax.ws.rs.core.SecurityContext;
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.DomainUserBean;
 import enterprises.mccollum.wmapp.authobjects.UserGroupBean;
-import enterprises.mccollum.wmapp.loginserver.ValidationUtils;
 import enterprises.mccollum.wmapp.loginserver.logic.UserLogicBean;
 import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
 import enterprises.mccollum.wmapp.ssauthclient.WMPrincipal;
@@ -37,9 +36,6 @@ public class UserResources {
 	
 	@Inject
 	UserGroupBean groupBean;
-	
-	@Inject
-	ValidationUtils valUtils;
 	
 	@Inject
 	APIUtils apiUtils;

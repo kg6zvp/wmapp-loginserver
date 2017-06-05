@@ -27,7 +27,7 @@ import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 /**
  * Various methods for interacting with the LDAP server utilizing LDAP UnboundID LDAP SDK Standard Edition
  * 
- * @author James Solum
+ * @author James Solum, Sam McCollum
  * 
  * About UnboundID: https://www.ldap.com/unboundid-ldap-sdk-for-java
  * Using UnboundID: https://docs.ldap.com/ldap-sdk/docs/getting-started/connections.html
@@ -88,7 +88,6 @@ public class LdapCapture {
 		Long studentID = userEntry.getAttributeValueAsLong("uidNumber"); // Use datatelID if this breaks
 		if(studentID == null)
 			studentID = userEntry.getAttributeValueAsLong("datatelID");
-		Logger.getLogger("LDAPCapture").log(Level.INFO, String.format("Student ID for user %s: %d", userEntry.getAttributeValue("cn"), studentID));
 		u.setStudentId(studentID);
 		u.setFirstName(userEntry.getAttributeValue("givenName"));
 		u.setLastName(userEntry.getAttributeValue("sn")); 
@@ -116,7 +115,7 @@ public class LdapCapture {
 		}else{
 			u = dUsers.save(tempUser);
 		}
-		if(userEntry.hasAttribute("memberOf")){
+		/*if(userEntry.hasAttribute("memberOf")){
 			for(String groupName : userEntry.getAttributeValues("memberOf")){
 				String gCN = getCNFromMemberOf(groupName);
 				SearchResultEntry groupEntry = getGroupAttributes(conn, gCN);
@@ -133,7 +132,7 @@ public class LdapCapture {
 					u = dUsers.save(u); //save user entry after adding group to user's groups list
 				}
 			}
-		}
+		}//*/
 		return u; //add users to database and return the database-connected object instance
 	}
 
@@ -145,7 +144,6 @@ public class LdapCapture {
 	 * @return
 	 */
 	private String getCNFromMemberOf(String groupName) {
-		System.out.println(groupName.split(",")[0].split("=")[1]);
 		return groupName.split(",")[0].split("=")[1];
 	}
 
@@ -155,7 +153,6 @@ public class LdapCapture {
 		// TODO: allow multiple logins gracefully for the same user on different devices
 		LDAPConnection conn = new LDAPConnection();
 		conn.connect(server, port); 
-		System.out.printf("User: %s\nPassword: ****\n", username); //, password);
 		@SuppressWarnings("unused") //we're about to try to assign it. Chill
 		BindResult bound = null;
 		//try{
@@ -191,9 +188,7 @@ public class LdapCapture {
 	public SearchResultEntry getLdapEntry(LDAPConnection conn, String baseDN, String type, String value) throws LDAPSearchException{
 		SearchResult searchResult = conn.search(baseDN, SearchScope.SUB, String.format("%s=%s", type, value));
 		List<SearchResultEntry> resultsList = searchResult.getSearchEntries();
-		//System.out.println("e: "+searchResult.getEntryCount());
 		for(SearchResultEntry e : resultsList){
-			//System.out.println("Found: "+e.getDN());
 			if(e.hasAttribute(type))
 				if(e.getAttribute(type).getValue().equals(value))
 					return e;
