@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>enterprises.mccollum.wmapp</groupId>
 	<artifactId>loginserver</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.4</version>
 	<packaging>war</packaging>
 	<dependencies>
 		<dependency>
@@ -25,7 +25,7 @@
 		<dependency>
   			<groupId>enterprises.mccollum.wmapp</groupId>
   			<artifactId>ssauthclient</artifactId>
-  			<version>1.0.4-SNAPSHOT</version>
+  			<version>1.0.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.primefaces</groupId>
@@ -78,13 +78,14 @@
 			</plugin>
 		</plugins>
 	</build>
+
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<failOnMissingWebXml>false</failOnMissingWebXml>
 	</properties>
 	
-		<distributionManagement>
+	<distributionManagement>
 		<repository>
 			<id>internal</id>
 			<url>http://archiva.mccollum.enterprises/repository/internal/</url>

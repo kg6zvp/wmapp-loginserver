@@ -19,8 +19,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import enterprises.mccollum.CookieUtils;
+import enterprises.mccollum.jee.urlutils.UrlContextUtils;
+import enterprises.mccollum.jee.urlutils.UrlStateUtils;
 import enterprises.mccollum.sauth.JWTWriterUtils;
-import enterprises.mccollum.ssauthclient.URLStateUtils;
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
@@ -36,7 +38,7 @@ public class LoginBean {
 	/**
 	 * Base64-encoded URL to redirect to after logging in, passing through all parameters originally given
 	 */
-	public static final String LOGIN_AFTER_PARAM="after";
+	public static final String LOGIN_AFTER_PARAM="redirect_uri";
 	
 	public static final String LOGIN_KEY_CODE_PARAM="code";
 	
@@ -53,7 +55,10 @@ public class LoginBean {
 	TokenUtils tokenUtils;
 	
 	@Inject
-	URLStateUtils urlStateUtils;
+	UrlStateUtils urlStateUtils;
+	
+	@Inject
+	UrlContextUtils urlCtx;
 	
 	String username;
 	
@@ -90,7 +95,8 @@ public class LoginBean {
 	
 	public void setupOrDoRedirect(){
 		ExternalContext ec = FacesContext.getCurrentInstance().getExternalContext();
-		Principal p = (Principal) ((HttpServletRequest)ec.getRequest()).getUserPrincipal();
+		HttpServletRequest req = (HttpServletRequest)ec.getRequest();
+		Principal p = (Principal) req.getUserPrincipal();
 		if(p == null)
 			p = (Principal) ((HttpSession)ec.getSession(true)).getAttribute(SSAuthClient.PRINCIPAL_SESSION_ATTRIBUTE);
 		Map<String, String> params = ec.getRequestParameterMap();
@@ -98,10 +104,12 @@ public class LoginBean {
 			if(params.containsKey(LOGIN_AFTER_PARAM)){
 				redirectUrl = urlStateUtils.decodeUrlStateToRequestUrl(params.get(LOGIN_AFTER_PARAM));
 			}else{
-				redirectUrl = ec.getApplicationContextPath()+"/";
+				redirectUrl = urlCtx.getApplicationBaseUrl(req)+"/";
+				//redirectUrl = ec.getApplicationContextPath()+"/";
 			}
 		}else{
-			redirectUrl = ec.getApplicationContextPath()+"/";
+			redirectUrl = urlCtx.getApplicationBaseUrl(req)+"/";
+			//redirectUrl = ec.getApplicationContextPath()+"/";
 		}
 		logf(Level.INFO, "Redirect url after login: %s", redirectUrl);
 		if(p != null && p instanceof WMPrincipal){

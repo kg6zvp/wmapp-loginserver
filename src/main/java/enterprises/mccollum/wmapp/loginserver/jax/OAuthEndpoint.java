@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
@@ -20,10 +21,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
 import enterprises.mccollum.sauth.TempKeyBean;
+import enterprises.mccollum.jee.urlutils.UrlContextUtils;
+import enterprises.mccollum.jee.urlutils.UrlStateUtils;
 import enterprises.mccollum.sauth.TempKey;
-import enterprises.mccollum.ssauthclient.URLContextUtils;
-import enterprises.mccollum.ssauthclient.URLStateUtils;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
+import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
 import enterprises.mccollum.wmapp.ssauthclient.WMPrincipal;
 
@@ -32,7 +34,9 @@ public class OAuthEndpoint {
 	public static final String PARAM_RESPONSE_TYPE="response_type",
 								PARAM_CLIENT_ID="client_id",
 								PARAM_REDIRECT_URI="redirect_uri",
-								PARAM_SCOPE = "scope";
+								PARAM_SCOPE = "scope",
+								PARAM_ENCODED_URI="encoded_uri";
+
 	/**
 	 * Response types for the authorization endpoint
 	 */
@@ -58,7 +62,7 @@ public class OAuthEndpoint {
 	SecurityContext seCtx;
 	
 	@Inject
-	URLStateUtils urlStateUtils;
+	UrlStateUtils urlStateUtils;
 	
 	@Context
 	UriInfo uriInfo;
@@ -67,11 +71,14 @@ public class OAuthEndpoint {
 	HttpServletRequest req;
 	
 	@Inject
-	URLContextUtils urlCtxUtils;
+	UrlContextUtils urlCtxUtils;
+	
+	@Inject
+	UserTokenBean tokenBean;
 	
 	/**
 	 * OAuth authorization endpoint
-	 * @param responseType: The response type (code and token currently implemented)
+	 * @param responseType: The response type (code and token currently implemented), defaults to code
 	 * @param clientId: The client ID
 	 * @param redirectUri: The Uri to redirect to when finished
 	 * @param scope: 
@@ -81,14 +88,18 @@ public class OAuthEndpoint {
 	@GET
 	@Path("authorize")
 	public Response authorizationEndpoint(
-			@QueryParam(PARAM_RESPONSE_TYPE) String responseType,
+			@DefaultValue(RESPONSE_TYPE_CODE) @QueryParam(PARAM_RESPONSE_TYPE) String responseType,
 			@QueryParam(PARAM_CLIENT_ID) String clientId,
 			@QueryParam(PARAM_REDIRECT_URI) String redirectUri,
-			@QueryParam(PARAM_SCOPE) List<String> scope) throws URISyntaxException{
+			@DefaultValue("mobile") @QueryParam(PARAM_SCOPE) List<String> scope,
+			@DefaultValue("false") @QueryParam(PARAM_ENCODED_URI)Boolean isEncodedUri){
+		if(responseType == null || redirectUri == null){
+			return Response.status(Status.BAD_REQUEST).entity("Bad request! Missing redirect_uri or response_type parameters").build();
+		}
 		if(responseType.equals(RESPONSE_TYPE_CODE)){
-			return authorizeCodeFlow(clientId, redirectUri, scope);
+			return authorizeCodeFlow(clientId, redirectUri, scope, isEncodedUri);
 		}else if(responseType.equals(RESPONSE_TYPE_TOKEN)){
-			return authorizeTokenFlow(clientId, redirectUri, scope);
+			return authorizeTokenFlow(clientId, redirectUri, scope, isEncodedUri);
 		}
 		return Response.status(Status.BAD_REQUEST).build();
 	}
@@ -98,7 +109,7 @@ public class OAuthEndpoint {
 	 * @param url
 	 * @return
 	 */
-	private ResponseBuilder doRedirect(String url){
+	ResponseBuilder doRedirect(String url){
 		return Response.status(Status.TEMPORARY_REDIRECT).header("Location", url);
 	}
 	
@@ -108,9 +119,9 @@ public class OAuthEndpoint {
 	 * @param req
 	 * @return
 	 */
-	private ResponseBuilder doLoginRedirect(HttpServletRequest req){
+	ResponseBuilder doLoginRedirect(HttpServletRequest req){
 		StringBuilder sb = new StringBuilder(urlCtxUtils.getApplicationBaseUrl(req));
-		sb.append("/login?after="+urlStateUtils.encodeRequestUrlToParam(req));
+		sb.append("/login?redirect_uri="+urlStateUtils.encodeRequestUrlToParam(req));
 		return doRedirect(sb.toString());
 	}
 	
@@ -123,7 +134,7 @@ public class OAuthEndpoint {
 	 * @return Response: a redirect if the user is not logged in, or to approve the app
 	 * @throws URISyntaxException if the URI is malformed
 	 */
-	private Response authorizeTokenFlow(String clientId, String redirectUri, List<String> scope) throws URISyntaxException {
+	Response authorizeTokenFlow(String clientId, String redirectUri, List<String> scope, Boolean isEncodedUri){
 		Principal tp = seCtx.getUserPrincipal();
 		/**
 		 * If they're not logged in, get them to log in
@@ -140,6 +151,8 @@ public class OAuthEndpoint {
 			}
 		}
 		StringBuilder fBuilder = null;
+		if(isEncodedUri)
+			redirectUri = urlStateUtils.decodeUrlStateToRequestUrl(redirectUri);
 		/**
 		 * If it's web
 		 */
@@ -159,7 +172,7 @@ public class OAuthEndpoint {
 		return doRedirect(fBuilder.toString()).build();
 	}
 
-	private StringBuilder prepareUriForParam(String uri){
+	StringBuilder prepareUriForParam(String uri){
 		StringBuilder fBuilder = new StringBuilder(uri);
 		if(uri.contains("?")){
 			if(!uri.endsWith("&"))
@@ -178,23 +191,33 @@ public class OAuthEndpoint {
 	 * @param scope
 	 * @return
 	 */
-	Response authorizeCodeFlow(String clientId, String redirectUri, List<String> scope) {
+	Response authorizeCodeFlow(String clientId, String redirectUri, List<String> scope, Boolean isEncodedUri) {
+		/*Principal tp = seCtx.getUserPrincipal();
+		/**
+		 * If they're not logged in, get them to log in
+		 */
+		/*if(tp == null || !(tp instanceof WMPrincipal)){
+			return doLoginRedirect(req).entity("Please sign in").build();
+		}//*/
+		
 		WMPrincipal principal = getPrincipal();
 		if(principal == null){ //if they're not logged in, log them in
-			doLoginRedirect(req);
+			return doLoginRedirect(req).build();
 		}
 		/*
 		 * Build URL and create code
 		 */
 		String tempKey = createTempKey(principal);
+		if(isEncodedUri)
+			redirectUri = urlStateUtils.decodeUrlStateToRequestUrl(redirectUri);
 		StringBuilder sb = prepareUriForParam(redirectUri);
 		sb.append(String.format("%s=%s", RESPONSE_TYPE_CODE, tempKey));
 		return doRedirect(sb.toString()).build();
 	}
 	
-	private String createTempKey(WMPrincipal wmp) {
+	String createTempKey(WMPrincipal wmp) {
 		TempKey tempKey = new TempKey();
-		tempKey.setToken(wmp.getToken());
+		tempKey.setToken(tokenBean.getByTokenId(wmp.getToken().getTokenId()));
 		tempKey.setExpirationDate(System.currentTimeMillis()+600000); //allow up to 10 minutes for retrieving the key
 		tempKey.generateKey();
 		authCodeStore.persist(tempKey);
@@ -221,7 +244,7 @@ public class OAuthEndpoint {
 		return Response.status(Status.BAD_REQUEST).build(); //not sure what we're supposed to do
 	}
 
-	private Response tokenAuthorizationCodeFlow(String code) {
+	Response tokenAuthorizationCodeFlow(String code) {
 		if(code == null || code.length() < 1){
 			return Response.status(Status.BAD_REQUEST).entity(apiUtils.mkErrorEntity("Missing parameter: code")).build();
 		}
@@ -240,13 +263,13 @@ public class OAuthEndpoint {
 		return Response.ok(token).build();
 	}
 	
-	private WMPrincipal getPrincipal(){
+	WMPrincipal getPrincipal(){
 		if(seCtx.getUserPrincipal() != null && seCtx.getUserPrincipal() instanceof WMPrincipal)
 			return (WMPrincipal) seCtx.getUserPrincipal();
 		return null;
 	}
 	
-	private void logf(Level lvl, String fmt, Object...args){
+	void logf(Level lvl, String fmt, Object...args){
 		Logger.getLogger(OAuthEndpoint.class.getSimpleName()).log(lvl, String.format(fmt, args));
 	}
 }
