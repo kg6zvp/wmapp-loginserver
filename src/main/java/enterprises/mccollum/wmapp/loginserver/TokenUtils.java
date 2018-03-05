@@ -1,16 +1,15 @@
 package enterprises.mccollum.wmapp.loginserver;
 
 import java.util.Calendar;
-import java.util.List;
+import java.util.UUID;
 
-import javax.annotation.PostConstruct;
 import javax.ejb.Local;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 
-import com.google.gson.Gson;
-
+import enterprises.mccollum.wmapp.authobjects.DomainUser;
 import enterprises.mccollum.wmapp.authobjects.UserToken;
+import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 import enterprises.mccollum.wmapp.ssauthclient.SSAuthClient;
 
 /**
@@ -21,49 +20,74 @@ import enterprises.mccollum.wmapp.ssauthclient.SSAuthClient;
 @Local
 @Stateless
 public class TokenUtils {
-	Gson gson;
-	
 	@Inject
 	SSAuthClient ssAuthClient;
+
+	@Inject
+	UserTokenBean tokenBean;
 	
-	long timeDiff;	
+	final long timeDiff;
+	final long timeDiffWeb;
+	
+	public TokenUtils(){
+		timeDiff = genTimeDiff();
+		timeDiffWeb = genTimeDiffWeb();
+	}
 	
 	long genTimeDiff(){
 		Calendar cal = Calendar.getInstance();
 		cal.add(Calendar.MONTH, 1);
-		return (cal.getTimeInMillis()-System.currentTimeMillis());
+		return ((cal.getTimeInMillis()-System.currentTimeMillis())/1000);
 	}
 	
-	@PostConstruct
-	public void init(){
-		gson = new Gson();
-		timeDiff = genTimeDiff();
-	}
-
-	public String getTokenArray(List<UserToken> tokens){
-		return ssAuthClient.getGsonWithExclusions().toJson(tokens);
-	}
-	
-	public String getTokenString(UserToken givenToken) {
-		return ssAuthClient.getGsonWithExclusions().toJson(givenToken);
+	long genTimeDiffWeb(){
+		Calendar cal = Calendar.getInstance();
+		cal.add(Calendar.HOUR, 8);
+		return ((cal.getTimeInMillis()-System.currentTimeMillis())/1000);
 	}
 
 	/**
+	 * Create a token for the given DomainUser with the given deviceName
+	 * @param u
+	 * @param deviceName
+	 * @param isWebToken
+	 * @return
+	 */
+	public UserToken createToken(DomainUser u, String deviceName, boolean isWebToken){
+		UserToken token = new UserToken();
+		token.setDeviceName( (deviceName != null ? deviceName : UUID.randomUUID().toString()) );
+		token.setBlacklisted(false); //not blacklisted by default
+		token.setIssueDate( (System.currentTimeMillis()/1000) ); //Set the issue date
+		token.setExpirationDate( (isWebToken ? getNewExpirationDateWeb() : getNewExpirationDate()) );
+		token.setStudentID(u.getStudentId());
+		token.setUsername(u.getUsername());
+		token.setEmployeeType(u.getEmployeeType());
+		
+		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
+		token.setTokenId(token.getId()); //set the tokenID to the id from the database
+		token = tokenBean.save(token); //Save the changes to the token
+		return token;
+	}
+	
+	/**
 	 * Return an expiration date valid for the token currently being generated
+	 * 
+	 * Uses Unix time (like System.currentTimeMillis()/1000)
 	 * @return
 	 */
 	public long getNewExpirationDate(){
 		/*Calendar cal = Calendar.getInstance();
 		cal.add(Calendar.MONTH, 1);
 		return cal.getTimeInMillis();//*/
-		return (System.currentTimeMillis()+timeDiff);
+		return ( (System.currentTimeMillis()/1000) + timeDiff);
 	}
-	
-	public Gson getGson(){
-		return gson;
-	}
-
-	public UserToken getToken(String tokenString) {
-		return getGson().fromJson(tokenString, UserToken.class);
+	/**
+	 * Return an expiration date for a web token
+	 * 
+	 * Uses Unix time (like System.currentTimeMillis()/1000)
+	 * @return
+	 */
+	public long getNewExpirationDateWeb(){
+		return ( (System.currentTimeMillis()/1000) + timeDiffWeb);
 	}
 }

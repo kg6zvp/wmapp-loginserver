@@ -3,10 +3,7 @@
  */
 package enterprises.mccollum.wmapp.loginserver.jax;
 
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
-import java.security.SignatureException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -17,7 +14,6 @@ import javax.json.JsonObject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -29,6 +25,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.unboundid.ldap.sdk.LDAPBindException;
 
 import enterprises.mccollum.wmapp.authobjects.DomainUser;
@@ -41,7 +38,6 @@ import enterprises.mccollum.wmapp.authobjects.UserToken;
 import enterprises.mccollum.wmapp.authobjects.UserTokenBean;
 import enterprises.mccollum.wmapp.loginserver.LdapCapture;
 import enterprises.mccollum.wmapp.loginserver.TokenUtils;
-import enterprises.mccollum.wmapp.loginserver.ValidationUtils;
 import enterprises.mccollum.wmapp.ssauthclient.APIUtils;
 import enterprises.mccollum.wmapp.ssauthclient.WMPrincipal;
 
@@ -51,8 +47,6 @@ import enterprises.mccollum.wmapp.ssauthclient.WMPrincipal;
  */
 @RequestScoped
 @Path("token")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class TokenResources {
 	@Inject
 	DomainUserBean userBean;
@@ -68,9 +62,6 @@ public class TokenResources {
 	
 	@Inject
 	InvalidationSubscriptionBean invalidations;
-	
-	@Inject
-	ValidationUtils validationUtils;
 	
 	@Inject
 	APIUtils apiUtils;
@@ -120,6 +111,7 @@ public class TokenResources {
 	 */
 	@POST
 	@Path("getToken")
+	@Consumes(MediaType.APPLICATION_JSON)
 	public Response getToken(JsonObject obj){
 	//public Response getToken(@FormParam("username")String username, @FormParam("password")String password, @FormParam("devicename")String deviceName){
 		String username = obj.getString("username");
@@ -147,21 +139,23 @@ public class TokenResources {
 			System.out.printf("Error accessing LDAP: %s\n", username);
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity("LDAP error"+e.getMessage())).build(); //return useful error to client for debugging porpoises
 		}
-		UserToken token = new UserToken();
-		token.setDeviceName(deviceName);
-		//remove expired tokens from database or something
-		token.setBlacklisted(false);
-		token.setExpirationDate(tokenUtils.getNewExpirationDate());
-		token.setStudentID(u.getStudentId());
-		token.setUsername(u.getUsername());
-		token.setEmployeeType(u.getEmployeeType());
-		
-		token = tokenBean.persist(token); //actually put it in the database and get the ID for the token
-		token.setTokenId(token.getId()); //set the tokenID to the id from the database
-		token = tokenBean.save(token);
-		//do magical encryption stuff here probably
 		System.out.printf("Login Success: %s\n", username);
-		return Response.ok(token).build();
+		return Response.ok(tokenUtils.createToken(u, deviceName, false)).build();
+	}
+	
+	/**
+	 * Issues a new token, but is currently not implemented
+	 * @return
+	 */
+	@GET
+	@Path("getToken")
+	public Response issueToken(@Context SecurityContext seCtx){
+		Principal tp = seCtx.getUserPrincipal();
+		if(tp == null || !(tp instanceof WMPrincipal))
+				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
+		WMPrincipal principal = (WMPrincipal) tp;
+		System.out.println("GET getToken: "+principal.getName());
+		return Response.status(Status.NOT_IMPLEMENTED).build();
 	}
 
 	//renewToken
@@ -224,15 +218,10 @@ public class TokenResources {
 	 */
 	@GET
 	@Path("tokenValid")
-	public Response isValidToken(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		UserToken authToken = new Gson().fromJson(tokenString, UserToken.class);
-		try{
-			if(!validationUtils.validateToken(authToken, signatureB64))
-				return Response.status(Status.UNAUTHORIZED).build();
-		}catch(Exception e){
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
-		}
-		
+	public Response isValidToken(@Context SecurityContext seCtx){
+		Principal tp = seCtx.getUserPrincipal();
+		if(tp == null || !(tp instanceof WMPrincipal))
+				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
 		//If we made it here, the token's okay and we should let them know
 		return Response.status(Status.OK).build();
 	}
@@ -253,28 +242,25 @@ public class TokenResources {
 	 */
 	@DELETE
 	@Path("invalidateToken/{tokenId}")
-	public Response invalidateToken(@PathParam("tokenId")Long tokenId, @HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		UserToken authToken = tokenUtils.getToken(tokenString); //Token used to authenticate
-		try {
-			if(!validationUtils.validateToken(authToken, signatureB64))
+	public Response invalidateToken(@PathParam("tokenId")Long tokenId, @Context SecurityContext seCtx){
+		Principal tp = seCtx.getUserPrincipal();
+		if(tp == null || !(tp instanceof WMPrincipal))
 				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
-		}
-		UserToken givenToken = tokenBean.getByTokenId(tokenId); //token specified for invalidation
-
-		if(givenToken == null) //if the token specified for invalidation doesn't exist
-			return Response.status(Status.GONE).entity(apiUtils.mkErrorEntity("The specified token cannot be deleted because it does not exist")).build();
+		WMPrincipal principal = (WMPrincipal) tp;
 		
-		if(!authToken.getUsername().equals(givenToken.getUsername())){ //If someone's trying to invalidate anther user's token
-			return Response.status(Status.FORBIDDEN).entity(apiUtils.mkErrorEntity(String.format("You are not allowed to invalidate someone else's token. An administrator will be notified %s != %s", authToken.getUsername(), givenToken.getUsername()))).build();
+		UserToken specifiedToken = tokenBean.getByTokenId(tokenId); //token specified for invalidation
+		if(specifiedToken == null) //if the token specified for invalidation doesn't exist
+			return Response.status(Status.GONE).entity(apiUtils.mkErrorEntity("The specified token cannot be invalidated because it does not exist")).build();
+		
+		if(!principal.getToken().getUsername().equals(specifiedToken.getUsername())){ //If someone's trying to invalidate anther user's token
+			return Response.status(Status.FORBIDDEN).entity(apiUtils.mkErrorEntity(String.format("You are not allowed to invalidate someone else's token. An administrator will be notified %s != %s", principal.getToken().getUsername(), specifiedToken.getUsername()))).build();
 			//TODO: notify admin
 		}
 
 		//If we made it here, the token's alright
-		givenToken.setBlacklisted(true);
-		tokenBean.save(givenToken);
-		return Response.status(Status.OK).entity(givenToken).build();
+		specifiedToken.setBlacklisted(true);
+		tokenBean.save(specifiedToken);
+		return Response.status(Status.OK).entity(specifiedToken).build();
 	}
 	
 	//listTokens
@@ -312,27 +298,24 @@ public class TokenResources {
 	 */
 	@GET
 	@Path("listTokens")
-	public Response listTokens(@HeaderParam(UserToken.TOKEN_HEADER)String tokenString, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		Gson gson = new Gson();
-		UserToken token = gson.fromJson(tokenString, UserToken.class);
-		try {
-			if(!validationUtils.validateToken(token, signatureB64)){
-				return Response.status(Status.UNAUTHORIZED).build();
-			}
-		} catch (InvalidKeyException | NoSuchAlgorithmException | SignatureException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
-		}
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response listTokens(@Context SecurityContext seCtx){
+		Principal tp = seCtx.getUserPrincipal();
+		if(tp == null || !(tp instanceof WMPrincipal))
+				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
+		WMPrincipal principal = (WMPrincipal) tp;
+		
 		UserToken key = new UserToken();
-		key.setStudentID(token.getStudentID());
+		key.setStudentID(principal.getToken().getStudentID());
 		List<UserToken> outstandingTokens = new LinkedList<>();
+		Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 		for(UserToken t : tokenBean.getMatching(key)){
-			if(!t.getBlacklisted() && t.getExpirationDate() > System.currentTimeMillis()){ //if it's not blacklisted and it's not expired
+			if(!t.getBlacklisted() && t.getExpirationDate() > (System.currentTimeMillis()/1000)){ //if it's not blacklisted and it's not expired
 				outstandingTokens.add(t);
 			}
 		}
-		return Response.ok(outstandingTokens).build();
+		String tokenList = gson.toJson(outstandingTokens); 
+		return Response.ok(tokenList).build();
 	}
 	
 	//subscribeToInvalidation
@@ -346,18 +329,14 @@ public class TokenResources {
 	 */
 	@POST
 	@Path("subscribeToInvalidation")
-	public Response subscribeToInvalidation(InvalidationSubscription invalidationSubscription, @HeaderParam(UserToken.TOKEN_HEADER)String givenToken, @HeaderParam(UserToken.SIGNATURE_HEADER)String signatureB64){
-		//TODO: Add authentication and authorization checks.
-		UserToken authToken = new Gson().fromJson(givenToken, UserToken.class);
-		try{
-			if(!validationUtils.validateToken(authToken, signatureB64))
-				return Response.status(Status.UNAUTHORIZED).build();
-		}catch(Exception e){
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(apiUtils.mkErrorEntity(e.getMessage())).build();
-		}
-			
+	public Response subscribeToInvalidation(InvalidationSubscription invalidationSubscription, @Context SecurityContext seCtx){
+		Principal tp = seCtx.getUserPrincipal();
+		if(tp == null || !(tp instanceof WMPrincipal))
+				return Response.status(Status.UNAUTHORIZED).entity(apiUtils.mkErrorEntity("You are not authenticated")).build();
+		WMPrincipal principal = (WMPrincipal) tp;
+		
 		invalidationSubscription.setId(null); //just in case someone tries something funny
-		invalidationSubscription.setTokenId(authToken.getTokenId()); //set explicitly
+		invalidationSubscription.setTokenId(principal.getToken().getTokenId()); //set explicitly
 		invalidations.persist(invalidationSubscription); //throw it in the database
 		
 		return Response.status(Status.OK).build();

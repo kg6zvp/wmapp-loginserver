@@ -4,6 +4,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.ejb.Local;
+import javax.ejb.Stateless;
 import javax.inject.Inject;
 
 import com.unboundid.ldap.sdk.BindResult;
@@ -21,6 +22,7 @@ import enterprises.mccollum.wmapp.loginserver.LdapCapture;
  * @author smccollum
  */
 @Local
+@Stateless
 public class UserLogicBean {
 	public static final String USERS_FILTER = "(&(objectCategory=person)(objectClass=user))"; //"(&(objectCategory=person)(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=2))";
 	public static final String STUDENT_FILTER = "employeeType=student";
@@ -38,6 +40,7 @@ public class UserLogicBean {
 	public int updateUserDB(String username, String password) throws Exception{
 		LDAPConnection conn = new LDAPConnection();
 		conn.connect(LdapCapture.server, LdapCapture.port);
+		@SuppressWarnings("unused")
 		BindResult bound = conn.bind(String.format("cn=%s,%s", username, LdapCapture.userBaseDN), password);
 		Filter peopleFilter = Filter.create("objectCategory=person");
 		Filter userClassFilter = Filter.create("objectClass=user");

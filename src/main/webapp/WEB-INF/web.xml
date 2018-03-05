@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<web-app version="3.1" xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee    http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd">
+	<display-name>Loginserver</display-name>
+	<welcome-file-list>
+		<welcome-file>index.xhtml</welcome-file>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+	
+	<filter>
+		<display-name>JSF Login Filter</display-name>
+		<filter-name>SSAuthClient</filter-name>
+		<filter-class>enterprises.mccollum.wmapp.ssauthclient.LoginFilter</filter-class>
+		
+		<!-- Base URL of the login server, unused -->
+		<init-param>
+			<param-name>loginserver-base</param-name>
+			<param-value>https://wmapp.mccollum.enterprises/loginserver</param-value>
+		</init-param>
+		
+		<!-- OAuth authorization URL, currently unused but may wish to switch to this over login-url since they both behave the same way -->
+		<!-- <init-param>
+			<param-name>authorize-url</param-name>
+			<param-value>/api/oauth/authorize?scope=web&amp;response_type=code</param-value>
+		</init-param> -->
+		
+		<!-- OAuth token URL, can be specified as a relative path in relation to the loginserver-base -->
+		<init-param>
+			<param-name>token-url</param-name>
+			<param-value>/api/oauth/token</param-value>
+		</init-param>
+	</filter>
+	
+	<filter-mapping>
+		<filter-name>SSAuthClient</filter-name>
+		<url-pattern>/web/*</url-pattern>
+	</filter-mapping>
+
+	<context-param>
+		<param-name>primefaces.THEME</param-name>
+		<param-value>bootstrap</param-value>
+	</context-param>
+</web-app>

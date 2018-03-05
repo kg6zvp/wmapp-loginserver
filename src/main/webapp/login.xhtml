@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:f="http://xmlns.jcp.org/jsf/core"
+	xmlns:h="http://xmlns.jcp.org/jsf/html"
+	xmlns:a="http://xmlns.jcp.org/jsf/passthrough"
+	xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+	xmlns:p="http://primefaces.org/ui"
+	xmlns:o="http://omnifaces.org/ui"
+	xmlns:of="http://omnifaces.org/functions" >
+
+<h:head>
+	<title>Login</title>
+</h:head>
+	<f:event listener="#{loginBean.setupOrDoRedirect()}" type="preRenderView"></f:event>
+	<h:body>
+		<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+		<o:form id="loginForm" includeRequestParams="true">
+			<p:panel id="loginPanel" header="Login" >
+				<p:focus id="unFocus" for="usernameTxt" />
+				<p:panelGrid columns="1" border="1" cellpadding="5" styleClass="ui-noborder" >
+						<h:outputLabel value="Username" />
+						<p:inputText id="usernameTxt" value="#{loginBean.username}" required="true" label="Username" />
+						<h:outputLabel value="Password" />
+						<p:password id="passwordTxt" value="#{loginBean.password}" required="true" label="Password" />
+				</p:panelGrid>
+				<h:outputText id="msgTxt" value="#{loginBean.message}" />
+				<div align="right">
+					<p:commandButton id="loginBtn" value="Login" actionListener="#{loginBean.submit()}" update="@all" />
+				</div>
+			</p:panel>
+			<p:blockUI animate="true" trigger="loginBtn" block="loginPanel" />
+		</o:form>
+		</div>
+	</h:body>
+</html>

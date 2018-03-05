@@ -2,10 +2,14 @@ package enterprises.mccollum.wmapp.loginserver;
 
 import java.io.FileInputStream;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import javax.annotation.PostConstruct;
 import javax.ejb.Lock;
 import javax.ejb.LockType;
@@ -35,9 +39,22 @@ public class CryptoSingleton {
 	@PostConstruct
 	public void init(){
 		try {
-			serviceKey = loadKeyPair();
+			logf("onInit()");
+			String ksp = KEYSTORE_PATH; //System.getenv("WMKS_FILE");
+			if(ksp == null || ksp.length() < 1){ //if the key store couldn't be loaded, create a key
+				logf("isNull? %b", ksp == null);
+				if(ksp != null)
+					logf("length? %d", ksp.length());
+				KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+				kpg.initialize(4096);
+				logf("Generating keypair");
+				serviceKey = kpg.generateKeyPair();
+			}else{ //if the keystore could be loaded, load it
+				logf("Loading keypair from file");
+				serviceKey = loadKeyPair();
+			}
 		} catch (Exception e) {
-			System.out.print("Honestly, I'm just sick of this at this point. I've been coding for hours trying to eliminate errors and this is what happens. I don't know what went wrong. Try checking line 44 of the file CryptoSingleton.java to see what's up here.\n");
+			logf(Level.SEVERE, "Honestly, I'm just sick of this at this point. I've been coding for hours trying to eliminate errors and this is what happens. I don't know what went wrong. Try checking line 44 of the file CryptoSingleton.java to see what's up here.");
 			e.printStackTrace();
 		}
 	}
@@ -69,5 +86,12 @@ public class CryptoSingleton {
 		KeyStore ks = KeyStore.getInstance("JKS");
 		ks.load(new FileInputStream(ksPath), KEYSTORE_PASS);
 		return ks;
+	}
+	
+	private void logf(String fmt, Object...params){
+		logf(Level.INFO, fmt, params);
+	}
+	private void logf(Level lvl, String fmt, Object...params){
+		Logger.getLogger("CryptoSingleton").log(lvl, String.format(fmt, params));
 	}
 }

@@ -1,0 +1,30 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" 
+	xmlns:f="http://xmlns.jcp.org/jsf/core"
+	xmlns:h="http://xmlns.jcp.org/jsf/html"
+	xmlns:a="http://xmlns.jcp.org/jsf/passthrough"
+	xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+	xmlns:p="http://primefaces.org/ui" >
+
+<h:head>
+	<title>#{profileViewController.user.fullName}</title>
+</h:head>
+	<h:body>
+		<div style="position: fixed; top 0%; right: 0%">
+			<h:form>
+				<p:commandButton value="Logout" actionListener="#{logoutBean.logout()}" update="@all" />
+			</h:form>
+		</div>
+		<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+			<p:panel id="panel" header="#{profileViewController.user.fullName}" >
+				<img src="#{profileViewController.user.studentIDPicture}" />
+				<p:panelGrid columns="1" styleClass="ui-noborder">
+					<p:outputLabel>Student ID: <p:outputLabel value="#{profileViewController.user.studentId}" /></p:outputLabel>
+					<p:outputLabel>Username: <p:outputLabel value="#{profileViewController.user.username}" /></p:outputLabel>
+					<p:outputLabel>Email address: <a href="mailto:#{profileViewController.user.email}">#{profileViewController.user.email}</a></p:outputLabel>
+					<p:outputLabel>Phone number: <a href="tel://#{profileViewController.user.phone}">#{profileViewController.user.phone}</a></p:outputLabel>
+				</p:panelGrid>
+			</p:panel>
+		</div>
+	</h:body>
+</html>
